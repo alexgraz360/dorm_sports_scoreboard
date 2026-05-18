@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dorm Sports Wire</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Graduate&family=Roboto+Slab:wght@700;800;900&family=Inter:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  </head>
+  <body>
+    <main class="scoreboard-screen" aria-live="polite">
+      <header class="scoreboard-header">
+        <div class="brand-block">
+          <div class="brand-mark">DSW</div>
+          <div>
+            <h1>Dorm Sports Wire</h1>
+            <p>MLB Stadium Board</p>
+            <small>Live from Hurst 11</small>
+          </div>
+        </div>
+
+        <div class="header-strip">
+          <div>
+            <span>Games</span>
+            <strong id="total-count">0</strong>
+          </div>
+          <div>
+            <span>Live</span>
+            <strong id="live-count">0</strong>
+          </div>
+          <div>
+            <span>Final</span>
+            <strong id="final-count">0</strong>
+          </div>
+        </div>
+
+        <div class="clock-block">
+          <time id="clock">--:-- --</time>
+          <span id="last-updated">Updating scores...</span>
+        </div>
+      </header>
+
+      <section class="scoreboard-grid-wrap">
+        <div class="board-meta">
+          <span id="date-label">Loading MLB slate</span>
+            <span id="status-note">Building live game focus</span>
+        </div>
+        <div id="games-grid" class="games-grid">
+          <article class="game-tile skeleton">
+            <span>Loading scoreboard...</span>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bottom-line" aria-label="Sports ticker">
+      <div class="ticker-league">MLB</div>
+      <div class="ticker-window">
+        <div id="ticker-track" class="ticker-track">
+          <span>Loading today's MLB ticker...</span>
+        </div>
+      </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>

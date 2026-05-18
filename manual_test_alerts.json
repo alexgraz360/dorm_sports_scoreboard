@@ -1,0 +1,15 @@
+{
+  "enabled": false,
+  "alerts": [
+    {
+      "category": "breaking-test",
+      "priority": 120,
+      "text": "Breaking ticker visual test - this is mock data, not real MLB news"
+    },
+    {
+      "category": "pressure-test",
+      "priority": 105,
+      "text": "Bases loaded visual test - manual mock alert"
+    }
+  ]
+}
