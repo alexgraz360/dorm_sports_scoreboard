@@ -76,6 +76,19 @@ h1,p{margin:0;}
 .featured .score{font-size:clamp(42px,4.4vw,86px);}
 .featured .name{font-size:clamp(9px,.85vw,15px);}
 
+/* Compact tiles: a full 16-game slate packs 14 compact tiles into up to 5
+   grid rows, so each tile is short. Shrink type/spacing (featured keeps full
+   size above) so the team codes never overflow up into the PREGAME badge. */
+.tile:not(.featured){padding:clamp(4px,0.5vw,10px);}
+.tile:not(.featured) .tile-top .detail{font-size:clamp(11px,1.05vw,20px);}
+.tile:not(.featured) .code{font-size:clamp(13px,1.15vw,24px);}
+.tile:not(.featured) .score{font-size:clamp(14px,1.25vw,26px);}
+.tile:not(.featured) .rows{gap:.2vh;}
+.tile:not(.featured) .trow{gap:.4vw;}
+.tile:not(.featured) .trow img{width:clamp(14px,1.15vw,22px);height:clamp(14px,1.15vw,22px);}
+.tile:not(.featured) .tile-foot{padding-top:.3vh;margin-top:.25vh;}
+.tile:not(.featured) .count{font-size:clamp(10px,.9vw,16px);}
+
 /* football field (featured tile) */
 .field{display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;gap:.4vw;height:clamp(26px,3.4vh,42px);margin-top:.8vh;}
 .ez{display:grid;place-items:center;width:clamp(30px,3vw,52px);font-family:var(--pixel);font-size:clamp(7px,.75vw,12px);color:#06030d;background:var(--c,#888);}
