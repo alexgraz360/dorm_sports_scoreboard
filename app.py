@@ -12,6 +12,13 @@ from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
+# Multi-sport boards (NFL, CFB, ... via ESPN) live in the adapters package and
+# register their own /api/<sport>/today and /ticker routes. MLB below is
+# unchanged and keeps its dedicated statsapi endpoints.
+from adapters.routes import sports_bp  # noqa: E402
+
+app.register_blueprint(sports_bp)
+
 MLB_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule"
 MLB_BOXSCORE_URL = "https://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore"
 MLB_TRANSACTIONS_URL = "https://statsapi.mlb.com/api/v1/transactions"
