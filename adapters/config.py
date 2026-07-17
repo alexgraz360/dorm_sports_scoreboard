@@ -8,6 +8,35 @@ color.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
+
+def load_env(path: str | None = None) -> None:
+    """Load KEY=VALUE lines from a repo-root .env into os.environ (dependency
+    free — we cannot add python-dotenv to requirements.txt). Existing env vars
+    win, so a real exported value is never overwritten. Values are never logged.
+    """
+    env_path = Path(path) if path else Path(__file__).resolve().parent.parent / ".env"
+    if not env_path.is_file():
+        return
+    try:
+        for raw in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+    except OSError:
+        pass
+
+
+# Load .env once on import so os.getenv(...) works for local dev and the Pi.
+load_env()
+
 # Favorites for both people, per league (abbreviations as ESPN returns them).
 # A game involving any favorite gets a focus boost and a star on its tile.
 FAVORITES: dict[str, dict[str, list[str]]] = {

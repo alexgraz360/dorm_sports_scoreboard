@@ -192,6 +192,28 @@ def api_board_override():
     return jsonify({"override": _override["board"], "board": _current_board()})
 
 
+# ---------------- fantasy (Sleeper primary) ----------------
+
+@sports_bp.route("/api/fantasy/rail")
+def api_fantasy_rail():
+    from .fantasy import build_fantasy_rail
+    try:
+        return jsonify(build_fantasy_rail())
+    except requests.RequestException as exc:
+        return jsonify({"error": f"Fantasy rail unavailable: {exc}",
+                        "demo": True, "people": []}), 502
+
+
+@sports_bp.route("/api/fantasy/wire")
+def api_fantasy_wire():
+    from .fantasy import build_fantasy_wire
+    try:
+        return jsonify(build_fantasy_wire())
+    except requests.RequestException as exc:
+        return jsonify({"error": f"Fantasy wire unavailable: {exc}",
+                        "demo": True, "items": []}), 502
+
+
 @sports_bp.route("/sleep")
 def sleep_page():
     return render_template("sleep.html")
