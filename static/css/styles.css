@@ -224,7 +224,7 @@ h1, p { margin: 0; }
 
 .tile > * { position: relative; z-index: 1; }
 
-.tile-top { display: flex; align-items: center; justify-content: space-between; gap: 0.4vw; }
+.tile-top { grid-row: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.4vw; }
 .badge {
   font-family: var(--pixel);
   font-size: clamp(6px, 0.62vw, 10px);
@@ -242,7 +242,7 @@ h1, p { margin: 0; }
   white-space: nowrap;
 }
 
-.focus-reasons { display: flex; flex-wrap: wrap; gap: 0.4vw; margin-top: 0.6vh; }
+.focus-reasons { grid-row: 2; display: flex; flex-wrap: wrap; gap: 0.4vw; margin-top: 0.6vh; }
 .focus-reasons span {
   font-family: var(--pixel);
   font-size: clamp(6px, 0.6vw, 9px);
@@ -257,7 +257,7 @@ h1, p { margin: 0; }
   max-width: 100%;
 }
 
-.rows { display: grid; align-content: center; gap: 0.5vh; min-height: 0; }
+.rows { grid-row: 3; display: grid; align-content: center; gap: 0.5vh; min-height: 0; }
 .trow {
   display: grid;
   grid-template-columns: auto auto 1fr auto;
@@ -297,7 +297,30 @@ h1, p { margin: 0; }
 .featured .score { font-size: clamp(44px, 4.6vw, 90px); }
 .featured .name { font-size: clamp(9px, 0.85vw, 15px); }
 
+/* Compact tiles: keep content inside the tile when the slate is large
+   (a full MLB day packs 14 compact tiles into up to 5 grid rows, so each
+   tile is short). Featured tile keeps its full-size type above. */
+.tile:not(.featured) { padding: clamp(4px, 0.5vw, 10px); }
+.tile:not(.featured) .tile-top .detail { font-size: clamp(12px, 1.15vw, 22px); }
+.tile:not(.featured) .code { font-size: clamp(14px, 1.3vw, 26px); }
+.tile:not(.featured) .score { font-size: clamp(16px, 1.45vw, 30px); }
+.tile:not(.featured) .name { font-size: clamp(6px, 0.55vw, 9px); }
+.tile:not(.featured) .rows { gap: 0.25vh; }
+.tile:not(.featured) .trow { gap: 0.4vw; }
+.tile:not(.featured) .trow img { width: clamp(15px, 1.2vw, 24px); height: clamp(15px, 1.2vw, 24px); }
+.tile:not(.featured) .tile-foot { padding-top: 0.35vh; margin-top: 0.3vh; }
+.tile:not(.featured) .count { font-size: clamp(10px, 0.9vw, 16px); }
+/* Bases only matter for a live game; drop the empty diamond otherwise. */
+.tile:not(.featured):not(.live) .diamond { display: none; }
+/* Smaller diamond for live compact tiles. */
+.tile:not(.featured).live .diamond { width: 30px; height: 22px; }
+.tile:not(.featured).live .base { width: 8px; height: 8px; }
+.tile:not(.featured).live .base.second { top: 0; left: 11px; }
+.tile:not(.featured).live .base.third { top: 11px; left: 1px; }
+.tile:not(.featured).live .base.first { top: 11px; right: 1px; }
+
 .tile-foot {
+  grid-row: 4;
   display: flex;
   align-items: center;
   justify-content: space-between;
