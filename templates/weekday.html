@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dorm Wire — Weekday Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@600;700;800;900&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0f16;--card:#141b26;--card2:#0f1620;--ink:#e8eef6;--dim:#8b95a5;--dim2:#6b7686;
+  --cyan:#5cc8ff;--amber:#f5c542;--line:#1d2734;
+  --grn:#22ff88;--red:#ff5a5a;--tamber:#ffcf3a;
+}
+*{box-sizing:border-box;}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;}
+body{background:var(--bg);color:var(--ink);font-family:'Barlow Condensed',sans-serif;}
+.screen{display:flex;flex-direction:column;height:100vh;width:100vw;padding:1.6vh 1.6vw 0;gap:1vh;}
+
+.hud{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:10px;padding:1.2vh 1.4vw;flex:0 0 auto;}
+.brand{display:flex;align-items:center;gap:.9vw;}
+.brand-mark{display:grid;place-items:center;width:clamp(40px,3.4vw,60px);aspect-ratio:1;border-radius:8px;background:#0b0f16;color:var(--cyan);font-family:'Inter';font-weight:900;font-size:clamp(14px,1.2vw,22px);border:2px solid var(--cyan);}
+.brand h1{margin:0;font-family:'Inter';font-weight:900;font-size:clamp(16px,1.7vw,30px);letter-spacing:1px;}
+.brand p{margin:.3vh 0 0;font-family:'Inter';font-weight:800;font-size:clamp(8px,.72vw,12px);letter-spacing:3px;color:var(--cyan);}
+.hud-mid{font-family:'Inter';font-weight:800;font-size:clamp(11px,1vw,17px);letter-spacing:2px;color:var(--dim);}
+.clock-block{display:flex;flex-direction:column;align-items:flex-end;}
+.clock-block time{font-family:'Inter';font-weight:800;font-size:clamp(26px,2.6vw,48px);line-height:.9;}
+.clock-block span{font-family:'Inter';font-weight:700;font-size:clamp(9px,.72vw,12px);color:var(--dim2);margin-top:.4vh;letter-spacing:1px;}
+
+.quote-bar{display:flex;align-items:center;gap:1vw;background:var(--card);border-radius:10px;border-left:4px solid var(--amber);padding:.8vh 1.2vw;flex:0 0 auto;}
+.q-tag{font-family:'Inter';font-weight:900;font-size:clamp(7px,.62vw,11px);letter-spacing:1.2px;color:#0b0f16;background:var(--amber);padding:.35em .6em;border-radius:4px;flex:0 0 auto;white-space:nowrap;}
+.q-text{font-weight:600;font-style:italic;font-size:clamp(15px,1.3vw,25px);color:var(--ink);flex:1;line-height:1.15;}
+.q-by{font-family:'Inter';font-weight:800;font-size:clamp(11px,.92vw,16px);color:var(--cyan);white-space:nowrap;flex:0 0 auto;}
+.q-cat{font-family:'Inter';font-weight:800;font-size:clamp(7px,.6vw,10px);letter-spacing:1px;color:var(--dim2);border:1px solid var(--line);padding:.3em .55em;border-radius:4px;flex:0 0 auto;white-space:nowrap;}
+
+.body{flex:1;display:grid;grid-template-columns:1fr clamp(260px,26vw,400px);gap:1.2vw;min-height:0;}
+.left{display:grid;grid-template-rows:auto 1fr;gap:1vh;min-height:0;}
+.schedules{display:grid;grid-template-columns:1fr 1fr;gap:1vw;}
+.card{background:var(--card);border-radius:10px;padding:1vh 1vw;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
+.ctitle{font-family:'Inter';font-weight:800;font-size:clamp(9px,.82vw,13px);letter-spacing:1.5px;color:var(--cyan);margin-bottom:.7vh;}
+.srow{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.7vw;padding:.5vh .3vw;border-bottom:1px solid var(--line);}
+.srow:last-child{border-bottom:0;}
+.st{font-weight:700;font-size:clamp(15px,1.35vw,26px);color:var(--dim);min-width:3.4em;}
+.sc{font-weight:700;font-size:clamp(15px,1.35vw,26px);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sr{font-family:'Inter';font-weight:700;font-size:clamp(9px,.7vw,12px);color:var(--dim2);}
+.srow.now{background:var(--amber);border-radius:6px;padding:.5vh .6vw;border-bottom:0;}
+.srow.now .st,.srow.now .sc{color:#1a1206;}
+.srow.now .sr{color:#4a3a10;}
+.srow.now .sc::after{content:" · NOW";font-family:'Inter';font-weight:900;font-size:.6em;}
+
+.wx{display:grid;grid-template-columns:auto 1fr;gap:1.2vw;align-items:center;}
+.wx-main{display:flex;flex-direction:column;}
+.wx-temp{font-weight:800;font-size:clamp(44px,5.4vw,100px);line-height:.85;}
+.wx-cond{font-weight:700;font-size:clamp(15px,1.4vw,26px);color:var(--dim);text-transform:uppercase;}
+.wx-hilo{font-family:'Inter';font-weight:700;font-size:clamp(10px,.8vw,14px);color:var(--dim2);margin-top:.4vh;}
+.wx-hours{display:grid;grid-template-columns:repeat(5,1fr);gap:.8vw;align-self:stretch;align-content:center;}
+.wx-hr{background:var(--card2);border-radius:8px;padding:1vh .5vw;text-align:center;}
+.wx-hr .h{font-family:'Inter';font-weight:800;font-size:clamp(9px,.7vw,12px);color:var(--dim2);}
+.wx-hr .t{font-weight:800;font-size:clamp(18px,1.7vw,32px);margin-top:.5vh;}
+.wx-hr .c{font-family:'Inter';font-weight:700;font-size:clamp(8px,.6vw,11px);color:var(--cyan);margin-top:.3vh;text-transform:uppercase;}
+
+.rail{background:#000;border:2px solid var(--grn);border-radius:8px;padding:1vh .9vw;display:flex;flex-direction:column;gap:.7vh;font-family:'VT323',monospace;position:relative;overflow:hidden;min-height:0;}
+.rail::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.4) 0 1px,transparent 1px 3px);opacity:.35;}
+.rail>*{position:relative;z-index:1;}
+.rhead{display:flex;align-items:center;justify-content:space-between;}
+.rtitle{font-size:clamp(15px,1.4vw,24px);color:var(--grn);text-shadow:0 0 6px rgba(34,255,136,.5);letter-spacing:1px;}
+.dots{display:flex;gap:4px;}
+.dot{width:7px;height:7px;border:1px solid var(--grn);}
+.dot.on{background:var(--grn);box-shadow:0 0 6px var(--grn);}
+.rtot{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dashed #14512b;padding-bottom:.5vh;}
+.rtot .v{font-size:clamp(22px,2vw,38px);color:#d6ffe8;}
+.rtot .d{font-size:clamp(15px,1.3vw,24px);}
+.rlist{display:flex;flex-direction:column;gap:.1vh;overflow:hidden;}
+.hrow{display:grid;grid-template-columns:auto 1fr auto auto;align-items:baseline;gap:.6vw;padding:.35vh 0;border-bottom:1px solid rgba(20,81,43,.5);}
+.sym{font-size:clamp(16px,1.4vw,26px);color:var(--tamber);min-width:3.6em;}
+.shr{font-size:clamp(12px,1vw,18px);color:#3aa869;}
+.prc{font-size:clamp(15px,1.3vw,24px);color:#d6ffe8;text-align:right;}
+.chg{font-size:clamp(15px,1.3vw,24px);text-align:right;min-width:3.4em;}
+.up{color:var(--grn);} .dn{color:var(--red);}
+
+.newsstrip{height:5.2vh;min-height:36px;display:flex;align-items:center;overflow:hidden;background:var(--card);border-radius:10px;padding:0 1vw;flex:0 0 auto;}
+.newsstrip .lbl{font-family:'Inter';font-weight:900;font-size:clamp(9px,.72vw,12px);letter-spacing:1px;color:var(--cyan);margin-right:1vw;flex:0 0 auto;}
+.ns-window{flex:1;overflow:hidden;}
+.ns-track{display:inline-block;white-space:nowrap;animation:scroll 70s linear infinite;font-weight:700;font-size:clamp(14px,1.2vw,22px);color:var(--ink);}
+.ns-track .ns-item{margin-right:2.6vw;}
+.ns-track .cat{display:inline-block;font-family:'Inter';font-weight:900;font-size:.6em;letter-spacing:.5px;padding:.2em .55em;border-radius:4px;margin-right:.7vw;color:#0b0f16;vertical-align:middle;}
+.cat.macro,.cat.fed{background:var(--amber);}
+.cat.ai,.cat.tech{background:var(--cyan);}
+.cat.markets{background:var(--grn);}
+.cat.earnings{background:#ff7ad9;}
+.cat.crypto{background:#ffb020;}
+.cat.energy{background:#ff8a5c;}
+.cat.deal{background:#a08bff;}
+
+.ribbon{height:6.6vh;min-height:50px;display:flex;align-items:stretch;background:#000;border-top:2px solid var(--grn);overflow:hidden;position:relative;flex:0 0 auto;}
+.ribbon::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.4) 0 1px,transparent 1px 3px);opacity:.35;}
+.ribbon .rl{display:grid;place-items:center;width:min(11vw,160px);background:var(--grn);color:#000;font-family:'VT323';font-size:clamp(16px,1.6vw,30px);letter-spacing:1px;flex:0 0 auto;z-index:1;}
+.rb-window{flex:1;overflow:hidden;display:flex;align-items:center;}
+.rb-track{display:flex;white-space:nowrap;animation:scroll 80s linear infinite;font-family:'VT323';font-size:clamp(18px,1.7vw,32px);}
+.rb-item{margin-right:2.4vw;color:#d6ffe8;}
+.rb-item .s{color:var(--tamber);}
+
+@keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header class="hud">
+    <div class="brand">
+      <div class="brand-mark">DW</div>
+      <div><h1>DORM WIRE</h1><p>WEEKDAY DASHBOARD</p></div>
+    </div>
+    <div class="hud-mid" id="dateline">—</div>
+    <div class="clock-block"><time id="clock">--:--</time><span id="wxnow">HURST 11</span></div>
+  </header>
+
+  <div class="quote-bar" id="quote"></div>
+
+  <div class="body">
+    <div class="left">
+      <div class="schedules">
+        <div class="card"><div class="ctitle">ALEX · TODAY</div><div id="sched-alex"></div></div>
+        <div class="card"><div class="ctitle">JORDAN · TODAY</div><div id="sched-jordan"></div></div>
+      </div>
+      <div class="card wx-card">
+        <div class="ctitle" style="color:var(--amber)">WEATHER · TODAY</div>
+        <div class="wx">
+          <div class="wx-main">
+            <span class="wx-temp" id="wx-temp">—</span>
+            <span class="wx-cond" id="wx-cond">—</span>
+            <span class="wx-hilo" id="wx-hilo">—</span>
+          </div>
+          <div class="wx-hours" id="wxhours"></div>
+        </div>
+      </div>
+    </div>
+    <aside class="rail" id="rail"></aside>
+  </div>
+
+  <div class="newsstrip">
+    <span class="lbl">MARKET WIRE</span>
+    <div class="ns-window"><div class="ns-track" id="news"></div></div>
+  </div>
+
+  <div class="ribbon">
+    <div class="rl">MARKETS</div>
+    <div class="rb-window"><div class="rb-track" id="ribbon"></div></div>
+  </div>
+</div>
+
+  <script src="{{ url_for('static', filename='js/weekday.js') }}"></script>
+</body>
+</html>

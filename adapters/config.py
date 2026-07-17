@@ -82,6 +82,25 @@ ENABLED_LEAGUES = ("nfl", "cfb", "nba", "cbb", "nhl", "epl")
 # aggregator pulls whichever of these have games today and skips the rest.
 ALL_SPORTS_LEAGUES = ("mlb", "nba", "nhl", "epl", "mls", "nfl", "cfb")
 
+# ---- Weekday dashboard config (not secret) ----
+# Location for weather (Open-Meteo, no key). Default: Madison, NJ (Drew Univ).
+WEATHER_LAT = 40.766
+WEATHER_LON = -74.425
+LOCATION_LABEL = "HURST 11"
+
+# Portfolio holdings (local config; quotes come from Finnhub). shares only.
+PORTFOLIO_HOLDINGS = [
+    {"symbol": "AAPL", "shares": 42},
+    {"symbol": "NVDA", "shares": 15},
+    {"symbol": "MSFT", "shares": 8},
+    {"symbol": "SPY", "shares": 20},
+    {"symbol": "VTI", "shares": 30},
+    {"symbol": "TSLA", "shares": 6},
+]
+WATCHLIST_SYMBOLS = ["PLTR", "AMD", "COIN", "NFLX", "META", "JPM"]
+# Ribbon: broad indices/tickers scrolled along the bottom.
+RIBBON_SYMBOLS = ["SPY", "QQQ", "DIA", "AAPL", "NVDA", "TSLA"]
+
 # Fallback accent colors (hex) used only when a feed does not supply one.
 FALLBACK_ACCENTS: dict[str, str] = {
     "NYY": "#132448", "NYG": "#0b2265", "DEN": "#fb4f14", "UGA": "#ba0c2f",

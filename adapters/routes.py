@@ -30,7 +30,7 @@ sports_bp = Blueprint("sports", __name__)
 # board, which already includes those games.
 BOARD_URLS = {
     board_selector.ASLEEP: "/sleep",
-    board_selector.WEEKDAY: "/all",  # dedicated weekday board is Phase 7
+    board_selector.WEEKDAY: "/weekday",
     board_selector.NFL: "/football/nfl",
     board_selector.CFB: "/football/cfb",
     board_selector.ALL: "/all",
@@ -190,6 +190,24 @@ def api_board_override():
     else:
         return jsonify({"error": f"Unknown board '{choice}'"}), 400
     return jsonify({"override": _override["board"], "board": _current_board()})
+
+
+# ---------------- weekday dashboard ----------------
+
+@sports_bp.route("/weekday")
+def weekday_board():
+    """Live weekday dashboard: quote of the day, schedules, weather, markets,
+    news. Mirrors previews/weekday_preview.html; fetches /api/weekday/today."""
+    return render_template("weekday.html")
+
+
+@sports_bp.route("/api/weekday/today")
+def api_weekday():
+    from .weekday import build_weekday
+    try:
+        return jsonify(build_weekday())
+    except requests.RequestException as exc:
+        return jsonify({"error": f"Weekday feed error: {exc}"}), 502
 
 
 # ---------------- fantasy (Sleeper primary) ----------------
