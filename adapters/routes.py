@@ -30,9 +30,9 @@ sports_bp = Blueprint("sports", __name__)
 # board, which already includes those games.
 BOARD_URLS = {
     board_selector.ASLEEP: "/sleep",
-    board_selector.WEEKDAY: "/all",
-    board_selector.NFL: "/all",
-    board_selector.CFB: "/all",
+    board_selector.WEEKDAY: "/all",  # dedicated weekday board is Phase 7
+    board_selector.NFL: "/football/nfl",
+    board_selector.CFB: "/football/cfb",
     board_selector.ALL: "/all",
     "mlb": "/",
 }
@@ -73,6 +73,17 @@ def all_sports_board():
     """Live all-sports board (arcade). Mirrors previews/all_sports_preview.html
     but fetches /api/all/today + /api/all/ticker instead of embedded demo data."""
     return render_template("all_sports.html")
+
+
+@sports_bp.route("/football/<league>")
+def football_board(league: str):
+    """Live NFL / CFB board with the football tile footer (down & distance,
+    possession, red-zone) and backend-provided team accent colors."""
+    league = league.lower()
+    if league not in ("nfl", "cfb"):
+        return jsonify({"error": f"No football board for '{league}'"}), 404
+    return render_template("football.html", league=league,
+                           label=ESPN_LEAGUES[league]["label"])
 
 
 @sports_bp.route("/api/all/today")
