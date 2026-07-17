@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dorm Wire — Tonight / All Sports (Preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06030d;--panel:#0d0820;--panel-2:#120a2b;--ink:#f4f6ff;--dim:#8b86b8;
+  --cyan:#23f0ff;--magenta:#ff2fb9;--green:#39ff14;--amber:#ffd23a;--red:#ff3b5c;
+  --line:rgba(35,240,255,.35);--line-dim:rgba(140,130,200,.28);
+  --pixel:"Press Start 2P",monospace;--term:"VT323",monospace;
+}
+*{box-sizing:border-box;}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;}
+body{background:radial-gradient(circle at 50% -10%,rgba(255,47,185,.12),transparent 40%),radial-gradient(circle at 100% 100%,rgba(35,240,255,.10),transparent 45%),var(--bg);color:var(--ink);font-family:var(--term);}
+body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;}
+body::before{background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.6px);background-size:6px 6px;opacity:.5;mix-blend-mode:screen;}
+body::after{background:repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px);opacity:.35;}
+h1,p{margin:0;}
+.screen{display:flex;flex-direction:column;gap:1.4vh;width:100vw;height:100vh;padding:1.8vh 1.8vw 13vh;}
+
+.hud{display:flex;align-items:center;justify-content:space-between;gap:2vw;border:3px solid var(--line);box-shadow:0 0 20px rgba(35,240,255,.25),inset 0 0 26px rgba(255,47,185,.08);background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:1.4vh 1.4vw;}
+.brand{display:flex;align-items:center;gap:1vw;}
+.brand-mark{display:grid;place-items:center;width:clamp(48px,4.2vw,74px);aspect-ratio:1;border:3px solid var(--cyan);background:#05030f;color:var(--cyan);font-family:var(--pixel);font-size:clamp(13px,1.2vw,20px);text-shadow:0 0 10px var(--cyan);}
+.brand-text h1{font-family:var(--pixel);font-size:clamp(16px,1.9vw,34px);text-shadow:0 0 12px rgba(35,240,255,.6);letter-spacing:1px;}
+.brand-text p{font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:var(--magenta);text-shadow:0 0 8px var(--magenta);margin-top:.7vh;letter-spacing:2px;}
+.brand-text small{display:block;margin-top:.5vh;color:var(--dim);font-size:clamp(13px,1vw,18px);letter-spacing:2px;}
+.counters{display:flex;gap:.9vw;}
+.counters div{display:grid;place-items:center;min-width:6.5vw;padding:.6vh .6vw;border:2px solid var(--line-dim);background:rgba(0,0,0,.3);}
+.counters span{font-family:var(--pixel);font-size:clamp(6px,.62vw,9px);color:var(--dim);letter-spacing:1px;}
+.counters strong{font-size:clamp(26px,2.6vw,50px);font-weight:400;line-height:.9;color:var(--amber);text-shadow:0 0 12px rgba(255,210,58,.55);}
+.clock-block{display:flex;flex-direction:column;align-items:flex-end;}
+.clock-block time{font-size:clamp(30px,3.2vw,62px);line-height:.9;color:var(--cyan);text-shadow:0 0 14px rgba(35,240,255,.6);}
+.clock-block span{margin-top:.5vh;font-family:var(--pixel);font-size:clamp(6px,.62vw,9px);color:var(--dim);letter-spacing:1px;}
+
+.board{flex:1;display:flex;flex-direction:column;min-height:0;gap:1vh;}
+.board-meta{display:flex;align-items:center;justify-content:space-between;border:2px solid var(--line-dim);border-left:8px solid var(--magenta);padding:.5vh .8vw;background:rgba(0,0,0,.35);}
+.board-meta span{font-family:var(--pixel);font-size:clamp(7px,.78vw,12px);letter-spacing:1px;}
+.board-meta span:first-child{color:var(--cyan);}
+.board-meta span:last-child{color:var(--dim);}
+
+.layout{flex:1;display:grid;grid-template-columns:1fr clamp(240px,23vw,340px);gap:.8vw;min-height:0;}
+.games-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:.6vw;min-height:0;}
+
+.tile{--team:var(--cyan);position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:2px solid var(--line-dim);background:linear-gradient(180deg,rgba(18,10,43,.96),rgba(6,3,13,.98));padding:clamp(6px,.7vw,12px);gap:.4vh;}
+.tile::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--team);box-shadow:0 0 12px var(--team);}
+.tile.live{border-color:var(--team);}
+.tile.live::before{animation:lamp 2.6s ease-in-out infinite;}
+.tile.final::before{opacity:.4;}
+.tile.featured{grid-column:span 2;grid-row:span 2;border-color:var(--team);box-shadow:0 0 26px color-mix(in srgb,var(--team) 45%,transparent),inset 0 0 26px rgba(0,0,0,.4);}
+.tile.featured::before{height:7px;}
+.tile>*{position:relative;z-index:1;}
+
+.tile-top{display:flex;align-items:center;justify-content:space-between;gap:.4vw;}
+.league{font-family:var(--pixel);font-size:clamp(6px,.62vw,10px);color:#06030d;padding:3px 5px;letter-spacing:.5px;}
+.lg-nba{background:#ff8a3d;} .lg-nhl{background:#5cc8ff;} .lg-mlb{background:#39ff14;} .lg-mls{background:#ff6ad5;} .lg-nfl{background:#ffd23a;}
+.detail{font-size:clamp(14px,1.35vw,26px);color:var(--amber);white-space:nowrap;}
+.live .detail{color:var(--green);text-shadow:0 0 8px var(--green);}
+
+.focus-reasons{display:flex;flex-wrap:wrap;gap:.4vw;}
+.focus-reasons span{font-family:var(--pixel);font-size:clamp(6px,.6vw,9px);color:var(--ink);border:1px solid var(--team);background:color-mix(in srgb,var(--team) 18%,transparent);padding:.4vh .4vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+
+.rows{display:grid;gap:.4vh;}
+.featured .rows{margin:.3vh 0;}
+.trow{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:.45vw;min-width:0;}
+.star{color:var(--amber);font-size:clamp(11px,.9vw,16px);text-shadow:0 0 8px var(--amber);width:1ch;}
+.star.off{opacity:0;}
+.code{font-size:clamp(20px,1.75vw,38px);line-height:1;color:var(--ink);text-shadow:0 0 8px color-mix(in srgb,var(--team) 60%,transparent);}
+.name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pixel);font-size:clamp(6px,.55vw,9px);color:var(--dim);}
+.score{font-size:clamp(24px,2vw,44px);line-height:.9;color:var(--ink);text-align:right;text-shadow:0 0 10px rgba(255,255,255,.25);}
+.featured .code{font-size:clamp(32px,3.1vw,60px);}
+.featured .score{font-size:clamp(36px,3.3vw,64px);}
+.featured .name{font-size:clamp(8px,.8vw,14px);}
+
+.wp{margin-top:.2vh;}
+.wp-bar{display:flex;height:clamp(8px,1vh,12px);border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.wp-bar i{display:block;height:100%;}
+.wp-lbl{display:flex;justify-content:space-between;font-family:var(--pixel);font-size:clamp(6px,.56vw,9px);color:var(--dim);margin-top:.3vh;}
+
+.viz{display:flex;align-items:center;gap:.6vw;height:clamp(26px,3.4vh,44px);}
+.viz .vlabel{font-size:clamp(13px,1.05vw,20px);color:var(--ink);white-space:nowrap;}
+.diamond{position:relative;width:clamp(34px,3vw,46px);height:100%;flex:0 0 auto;}
+.base{position:absolute;width:10px;height:10px;border:2px solid rgba(244,246,255,.4);transform:rotate(45deg);}
+.base.second{top:8%;left:38%;} .base.third{top:42%;left:8%;} .base.first{top:42%;right:8%;}
+.base.on{border-color:var(--amber);background:var(--amber);box-shadow:0 0 10px var(--amber);}
+.court{position:relative;flex:1;height:100%;border:2px solid rgba(255,255,255,.18);border-radius:4px;background:#0a0f16;overflow:hidden;}
+.court .cmid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,255,255,.15);}
+.court .carc{position:absolute;top:50%;right:6%;width:20px;height:20px;border:2px solid rgba(255,255,255,.22);border-radius:50%;transform:translateY(-50%);}
+.court .hoop{position:absolute;top:50%;right:2%;width:5px;height:5px;background:var(--amber);border-radius:50%;transform:translateY(-50%);box-shadow:0 0 8px var(--amber);}
+.court .cball{position:absolute;top:50%;width:9px;height:9px;background:#ff8a3d;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 9px #ff8a3d;}
+.rink{position:relative;flex:1;height:100%;border:2px solid rgba(120,180,255,.3);border-radius:16px;background:#0a1420;overflow:hidden;}
+.rink .rmid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,80,80,.6);transform:translateX(-50%);}
+.rink .rblue{position:absolute;top:0;bottom:0;width:2px;background:rgba(90,150,255,.5);}
+.rink .puck{position:absolute;top:50%;width:7px;height:7px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px #fff;}
+.pitch{position:relative;flex:1;height:100%;border:2px solid rgba(80,220,120,.3);border-radius:3px;background:#08140c;overflow:hidden;}
+.pitch .pmid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,255,255,.18);transform:translateX(-50%);}
+.pitch .pcirc{position:absolute;top:50%;left:50%;width:18px;height:18px;border:2px solid rgba(255,255,255,.22);border-radius:50%;transform:translate(-50%,-50%);}
+.pitch .pball{position:absolute;top:50%;width:8px;height:8px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px #fff;}
+.ffield{position:relative;flex:1;height:100%;background:#07130a;border-top:2px solid rgba(255,255,255,.18);border-bottom:2px solid rgba(255,255,255,.18);background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.14) 0 2px,transparent 2px 10%);overflow:hidden;border-radius:2px;}
+.ffield .rz{position:absolute;top:0;bottom:0;right:0;width:18%;background:linear-gradient(90deg,transparent,rgba(255,59,92,.45));}
+.ffield .fball{position:absolute;top:50%;width:11px;height:7px;background:var(--amber);border-radius:50%;transform:translate(-50%,-50%) rotate(-18deg);box-shadow:0 0 10px var(--amber);}
+
+.leaders{font-size:clamp(12px,.98vw,18px);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.leaders b{color:var(--ink);}
+.leaders .lg-key{color:var(--amber);font-family:var(--pixel);font-size:.7em;margin-right:.4vw;}
+
+.tile-foot{display:flex;align-items:center;justify-content:space-between;gap:.6vw;border-top:1px solid var(--line-dim);padding-top:.4vh;margin-top:auto;}
+.count{font-size:clamp(13px,1.02vw,19px);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.featured .count{color:var(--ink);}
+.flag{font-family:var(--pixel);font-size:clamp(6px,.56vw,9px);color:#06030d;background:var(--amber);padding:.4vh .5vw;white-space:nowrap;}
+.flag.hot{background:var(--red);color:#fff;animation:pulse 1.4s ease-in-out infinite;}
+
+/* sidebar: all leagues at once */
+.sidebar{border:2px solid var(--magenta);background:linear-gradient(180deg,rgba(30,8,30,.96),rgba(6,3,13,.98));padding:.9vh .8vw;display:flex;flex-direction:column;gap:.4vh;min-height:0;overflow:hidden;position:relative;}
+.sb-head{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;}
+.sb-title{font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:var(--magenta);text-shadow:0 0 8px var(--magenta);}
+.sb-sub{font-family:var(--pixel);font-size:clamp(5px,.5vw,8px);color:var(--dim);}
+.sb-body{display:flex;flex-direction:column;gap:.3vh;min-height:0;overflow:hidden;}
+.sb-section{display:flex;flex-direction:column;}
+.sb-lg{font-family:var(--pixel);font-size:clamp(7px,.7vw,11px);letter-spacing:.5px;padding:.6vh 0 .3vh;border-bottom:1px dashed rgba(255,255,255,.18);margin-top:.4vh;}
+.sb-lg.nba{color:#ff8a3d;} .sb-lg.nhl{color:#5cc8ff;} .sb-lg.mlb{color:#39ff14;} .sb-lg.mls{color:#ff6ad5;}
+.pg{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5vw;padding:.35vh 0;border-bottom:1px solid rgba(140,130,200,.13);}
+.pg .teams{font-size:clamp(13px,1.08vw,19px);color:var(--ink);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.pg .st{font-size:clamp(11px,.92vw,16px);color:var(--dim);white-space:nowrap;}
+.pg .st.fin{color:#5a5570;}
+
+.ticker{position:fixed;left:0;right:0;bottom:0;height:11vh;min-height:74px;z-index:40;display:flex;align-items:stretch;border-top:3px solid var(--line);background:#04020a;}
+.ticker-league{display:grid;place-items:center;width:min(14vw,210px);background:var(--magenta);color:#06030d;font-family:var(--pixel);font-size:clamp(11px,1.2vw,20px);box-shadow:0 0 20px rgba(255,47,185,.5);text-align:center;}
+.ticker-window{flex:1;overflow:hidden;display:flex;align-items:center;}
+.ticker-track{display:flex;width:max-content;white-space:nowrap;animation:scroll 95s linear infinite;}
+.ticker-item{display:inline-flex;align-items:center;margin-right:3vw;font-size:clamp(18px,1.7vw,32px);color:var(--ink);}
+.ticker-item::before{content:attr(data-label);margin-right:.9vw;font-family:var(--pixel);font-size:.42em;letter-spacing:1px;color:var(--cyan);border:1px solid var(--cyan);padding:.4em .5em;}
+.ticker-item.hot{color:var(--amber);}
+.ticker-item.hot::before{color:#06030d;background:var(--amber);border-color:var(--amber);}
+.ticker-item small{margin-left:.6vw;font-size:.5em;color:var(--dim);}
+
+@keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+@keyframes lamp{0%,100%{opacity:.7;}50%{opacity:1;}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 rgba(255,59,92,0);}50%{box-shadow:0 0 16px rgba(255,59,92,.7);}}
+@media(max-width:1100px){.games-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
+</head>
+<body>
+  <main class="screen">
+    <header class="hud">
+      <div class="brand">
+        <div class="brand-mark">DW</div>
+        <div class="brand-text"><h1>DORM WIRE</h1><p>TONIGHT · ALL SPORTS</p><small>HURST 11</small></div>
+      </div>
+      <div class="counters">
+        <div><span>LIVE</span><strong id="live-count">0</strong></div>
+        <div><span>SPORTS</span><strong id="sport-count">0</strong></div>
+        <div><span>GAMES</span><strong id="total-count">0</strong></div>
+      </div>
+      <div class="clock-block"><time id="clock">--:--</time><span id="last-updated">PREVIEW</span></div>
+    </header>
+    <section class="board">
+      <div class="board-meta"><span id="date-label">WEDNESDAY NIGHT</span><span id="status-note">BEST GAMES ACROSS EVERY SPORT · A FEW FROM EACH LEAGUE</span></div>
+      <div class="layout">
+        <div id="games-grid" class="games-grid"></div>
+        <aside class="sidebar" id="sidebar"></aside>
+      </div>
+    </section>
+  </main>
+  <footer id="ticker" class="ticker">
+    <div class="ticker-league">THE WIRE</div>
+    <div class="ticker-window"><div id="ticker-track" class="ticker-track"></div></div>
+  </footer>
+
+<script>
+const FOCUS_ROTATION_MS=6500, SB_ROTATION_MS=5000;
+const GAMES=[
+  { id:1, lg:"nba", live:true, final:false, detail:"4TH · 1:12", reasons:["CLUTCH TIME","1-POSS GAME","FAV: NYK"], flag:"CLUTCH", hot:true,
+    away:{ab:"BOS",nm:"Celtics",sc:106,c:"#3fd6a8",fav:false}, home:{ab:"NYK",nm:"Knicks",sc:104,c:"#ff8a3d",fav:true},
+    wp:{h:56}, leaders:[["NYK","Brunson 34 PTS"],["BOS","Tatum 29 PTS"]], viz:{k:"nba",ball:0.72,extra:"SHOT 0:14 · BONUS"} },
+  { id:2, lg:"mlb", live:true, final:false, detail:"BOT 8TH", flag:"BASES LOADED", hot:true,
+    away:{ab:"BOS",nm:"Red Sox",sc:3,c:"#ff5a6e",fav:false}, home:{ab:"NYY",nm:"Yankees",sc:4,c:"#5b8cff",fav:true},
+    wp:{h:63}, leaders:[["NYY","Judge 2-3, HR"],["BOS","Devers 2 RBI"]], viz:{k:"mlb",bases:{first:true,second:true,third:true},extra:"2-1 · 1 OUT"} },
+  { id:3, lg:"nhl", live:true, final:false, detail:"3RD · 5:40", flag:"TIE GAME",
+    away:{ab:"BOS",nm:"Bruins",sc:2,c:"#ffd23a",fav:false}, home:{ab:"NYR",nm:"Rangers",sc:2,c:"#4f7cff",fav:false},
+    wp:{h:50}, leaders:[["NYR","Panarin 1G 1A"],["BOS","Pastrnak 1G"]], viz:{k:"nhl",puck:0.58,extra:"SOG 31-28"} },
+  { id:4, lg:"nba", live:true, final:false, detail:"3RD · 6:20", flag:"",
+    away:{ab:"GSW",nm:"Warriors",sc:75,c:"#4ac3ff",fav:false}, home:{ab:"LAL",nm:"Lakers",sc:71,c:"#ffd23a",fav:false},
+    wp:{h:44}, leaders:[["GSW","Curry 31 PTS"],["LAL","James 26 PTS"]], viz:{k:"nba",ball:0.4,extra:"SHOT 0:19"} },
+  { id:5, lg:"mlb", live:true, final:false, detail:"TOP 7TH", flag:"RISP",
+    away:{ab:"LAD",nm:"Dodgers",sc:5,c:"#3aa0ff",fav:false}, home:{ab:"SD",nm:"Padres",sc:2,c:"#ffc425",fav:false},
+    wp:{h:31}, leaders:[["LAD","Betts 3-4"],["SD","Machado HR"]], viz:{k:"mlb",bases:{second:true},extra:"1-2 · 2 OUT"} },
+  { id:6, lg:"nhl", live:true, final:false, detail:"2ND · 11:00", flag:"PP EDM",
+    away:{ab:"EDM",nm:"Oilers",sc:1,c:"#ff7a2e",fav:false}, home:{ab:"LAK",nm:"Kings",sc:0,c:"#c9ccd6",fav:false},
+    wp:{h:40}, leaders:[["EDM","McDavid 2A"],["LAK","Kopitar 1G"]], viz:{k:"nhl",puck:0.34,extra:"PP · SOG 22-19"} },
+  { id:7, lg:"mls", live:true, final:false, detail:"68'", flag:"",
+    away:{ab:"ATL",nm:"Atlanta Utd",sc:1,c:"#ff3141",fav:false}, home:{ab:"NYC",nm:"NYCFC",sc:1,c:"#4ac3ff",fav:false},
+    wp:{h:52}, leaders:[["NYC","Wolf 1G"],["ATL","Silva 1G"]], viz:{k:"mls",ball:0.55,extra:"POSS 54% · 68'"} },
+  { id:8, lg:"nba", live:true, final:false, detail:"HALF", flag:"",
+    away:{ab:"MIA",nm:"Heat",sc:58,c:"#ff3141",fav:false}, home:{ab:"MIL",nm:"Bucks",sc:55,c:"#39ff14",fav:false},
+    wp:{h:55}, leaders:[["MIL","Giannis 22 PTS"],["MIA","Adebayo 18 PTS"]], viz:{k:"nba",ball:0.5,extra:"HALFTIME"} },
+  { id:9, lg:"mlb", live:false, final:true, detail:"FINAL", flag:"",
+    away:{ab:"ATL",nm:"Braves",sc:6,c:"#ff4d4d",fav:false}, home:{ab:"NYM",nm:"Mets",sc:4,c:"#ff6a1e",fav:false},
+    wp:null, leaders:[["ATL","Ozuna 2 HR"],["NYM","Alonso HR"]], viz:null },
+];
+const LEAGUES=[
+  { name:"NBA", games:[["PHI",101,"TOR",99,"4Q"],["DEN",88,"OKC",90,"3Q"],["DAL",77,"PHX",80,"3Q"],["SAC",55,"MEM",52,"2Q"],["ORL",44,"IND",47,"2Q"],["MIN",92,"HOU",95,"4Q"]]},
+  { name:"NHL", games:[["TOR",3,"MTL",2,"3P"],["COL",1,"VGK",1,"2P"],["TBL",4,"FLA",2,"3P"],["CAR",0,"NJD",0,"1P"],["NSH",2,"STL",1,"3P"],["DAL",2,"WPG",3,"FINAL"]]},
+  { name:"MLB", games:[["HOU",2,"SEA",1,"6TH"],["CHC",7,"STL",3,"7TH"],["PHI",4,"MIA",4,"5TH"],["TEX",8,"LAA",2,"8TH"],["CLE",3,"DET",2,"6TH"],["SF",1,"COL",0,"4TH"]]},
+  { name:"MLS", games:[["LAFC",2,"SEA",1,"75'"],["MIA",3,"ORL",1,"80'"],["CIN",0,"CLB",0,"55'"],["AUS",1,"DAL",1,"60'"],["PHI",1,"NE",2,"FINAL"],["RSL",2,"POR",0,"FINAL"]]},
+];
+const TICKER=[
+  { text:"CLUTCH: Knicks and Celtics trading buckets, NY up 2 inside the final 1:12", cat:"hot", src:"live" },
+  { text:"Bases loaded for the Yankees clinging to a 4-3 lead in the 8th", cat:"hot", src:"live" },
+  { text:"Rangers and Bruins knotted at 2 late in the 3rd", cat:"hot", src:"live" },
+  { text:"Dodgers pour it on the Padres, up 5-2 with a runner in scoring position", cat:"", src:"live" },
+  { text:"Final: Braves take down the Mets 6-4 behind an Ozuna two-homer night", cat:"", src:"live" },
+];
+
+const el=s=>document.querySelector(s);
+let focusIndex=0, sbPage=0, focusPool=[];
+
+function focusScore(g){
+  let s=0;const r=[];
+  if(g.live){s+=45;r.push("LIVE");}
+  if(g.away.fav||g.home.fav){s+=42;r.push("YOUR TEAM");}
+  const diff=Math.abs(g.away.sc-g.home.sc);
+  const late=/4TH|BOT 8|BOT 9|TOP 8|TOP 9|3P|8TH|9TH|7[05]'|8[05]'/.test(g.detail);
+  if(g.live&&late&&diff<=(g.lg==="mlb"||g.lg==="nhl"||g.lg==="mls"?2:6)){s+=34;r.push("CLOSE + LATE");}
+  if(g.flag&&/LOADED|CLUTCH|TIE|PP/.test(g.flag)){s+=20;r.push(g.flag);}
+  return {s, r:(g.reasons||r)};
+}
+function buildPool(){focusPool=GAMES.map(g=>({g,f:focusScore(g)})).filter(e=>e.f.s>0||!e.g.final).sort((a,b)=>b.f.s-a.f.s).slice(0,5);}
+function stateClass(g){return g.live?"live":g.final?"final":"scheduled";}
+
+function teamRow(g,t,featured){
+  const star=`<span class="star ${t.fav?"":"off"}">&#9733;</span>`;
+  return `<div class="trow">${star}<span class="code" style="color:${t.c}">${t.ab}</span>`
+    +`<span class="name">${featured?t.nm:""}</span><strong class="score">${g.final||g.live?t.sc:"-"}</strong></div>`;
+}
+function vizHTML(g){
+  const v=g.viz; if(!v) return "";
+  let graphic="";
+  if(v.k==="mlb"){
+    const b=v.bases||{};
+    graphic=`<div class="diamond"><span class="base second ${b.second?"on":""}"></span><span class="base third ${b.third?"on":""}"></span><span class="base first ${b.first?"on":""}"></span></div>`;
+  } else if(v.k==="nba"){
+    graphic=`<div class="court"><span class="cmid"></span><span class="carc"></span><span class="hoop"></span><span class="cball" style="left:${v.ball*100}%"></span></div>`;
+  } else if(v.k==="nhl"){
+    graphic=`<div class="rink"><span class="rblue" style="left:33%"></span><span class="rblue" style="left:67%"></span><span class="rmid"></span><span class="puck" style="left:${v.puck*100}%"></span></div>`;
+  } else if(v.k==="mls"){
+    graphic=`<div class="pitch"><span class="pmid"></span><span class="pcirc"></span><span class="pball" style="left:${v.ball*100}%"></span></div>`;
+  } else if(v.k==="nfl"){
+    graphic=`<div class="ffield"><span class="rz"></span><span class="fball" style="left:${(v.yard||60)}%"></span></div>`;
+  }
+  return `<div class="viz">${graphic}<span class="vlabel">${v.extra||""}</span></div>`;
+}
+function wpHTML(g){
+  if(!g.wp) return "";
+  const h=g.wp.h, a=100-h;
+  return `<div class="wp"><div class="wp-bar"><i style="width:${a}%;background:${g.away.c}"></i><i style="width:${h}%;background:${g.home.c}"></i></div>`
+    +`<div class="wp-lbl"><span>${g.away.ab} ${a}%</span><span>WIN PROB</span><span>${g.home.ab} ${h}%</span></div></div>`;
+}
+function leadersHTML(g,featured){
+  if(!g.leaders) return "";
+  const key=featured?`<span class="lg-key">LEADERS</span>`:"";
+  const parts=g.leaders.map(l=>`<b>${l[0]}</b> ${l[1]}`).join(" &middot; ");
+  return `<div class="leaders">${key}${parts}</div>`;
+}
+function tile(g,featured){
+  const {r}=focusScore(g);
+  const accent=(g.home.fav?g.home.c:(g.away.fav?g.away.c:g.home.c));
+  const reasons=featured?`<div class="focus-reasons">${r.slice(0,4).map(x=>`<span>${x}</span>`).join("")}</div>`:"";
+  const flag=g.flag?`<span class="flag ${g.hot?"hot":""}">${g.flag}</span>`:"";
+  const body=featured
+    ? reasons+`<div class="rows">${teamRow(g,g.away,true)}${teamRow(g,g.home,true)}</div>`+vizHTML(g)+wpHTML(g)+leadersHTML(g,true)
+    : `<div class="rows">${teamRow(g,g.away,false)}${teamRow(g,g.home,false)}</div>`+leadersHTML(g,false);
+  const foot=featured
+    ? `<div class="tile-foot"><span class="count">${g.lg.toUpperCase()} · ${g.detail}</span>${flag}</div>`
+    : `<div class="tile-foot"><span class="count">${g.final?"FINAL":g.detail}</span>${flag}</div>`;
+  return `<article class="tile ${stateClass(g)} ${featured?"featured":""}" style="--team:${accent}">`
+    +`<div class="tile-top"><span class="league lg-${g.lg}">${g.lg.toUpperCase()}</span><span class="detail">${featured?"GAME FOCUS":g.detail}</span></div>`
+    +body+foot+`</article>`;
+}
+function renderGrid(){
+  const focus=focusPool[focusIndex%Math.max(focusPool.length,1)].g;
+  const rest=GAMES.filter(g=>g.id!==focus.id).slice(0,8);
+  el("#games-grid").innerHTML=[tile(focus,true),...rest.map(g=>tile(g,false))].join("");
+}
+function renderSidebar(){
+  const perLeague=3;
+  const sections=LEAGUES.map(l=>{
+    const n=l.games.length, start=(sbPage*perLeague)%n;
+    const win=[];
+    for(let i=0;i<Math.min(perLeague,n);i++) win.push(l.games[(start+i)%n]);
+    const rows=win.map(g=>{const fin=g[4]==="FINAL"?"fin":"";return `<div class="pg"><span class="teams">${g[0]} ${g[1]} &middot; ${g[2]} ${g[3]}</span><span class="st ${fin}">${g[4]}</span></div>`;}).join("");
+    return `<div class="sb-section"><div class="sb-lg ${l.name.toLowerCase()}">${l.name}</div>${rows}</div>`;
+  }).join("");
+  el("#sidebar").innerHTML=`<div class="sb-head"><span class="sb-title">ALSO ON</span><span class="sb-sub">ROTATES</span></div><div class="sb-body">${sections}</div>`;
+}
+function renderTicker(){
+  const items=TICKER.map(i=>{const cls=i.cat==="hot"?"hot":"";const lab=i.cat==="hot"?"HOT":"WIRE";return `<span class="ticker-item ${cls}" data-label="${lab}">${i.text}<small>${i.src}</small></span>`;}).join("");
+  el("#ticker-track").innerHTML=`<span>${items}</span><span>${items}</span>`;
+}
+function counts(){
+  const live=GAMES.filter(g=>g.live).length + LEAGUES.reduce((n,c)=>n+c.games.filter(g=>g[4]!=="FINAL").length,0);
+  const total=GAMES.length + LEAGUES.reduce((n,c)=>n+c.games.length,0);
+  const sports=new Set([...GAMES.map(g=>g.lg), ...LEAGUES.map(l=>l.name.toLowerCase())]).size;
+  el("#live-count").textContent=live; el("#total-count").textContent=total; el("#sport-count").textContent=sports;
+}
+function clock(){const d=new Date();let h=d.getHours();const m=d.getMinutes();const ap=h>=12?"PM":"AM";h=h%12||12;el("#clock").textContent=`${h}:${m<10?"0"+m:m} ${ap}`;}
+buildPool();counts();renderGrid();renderSidebar();renderTicker();clock();
+setInterval(clock,15000);
+setInterval(()=>{focusIndex=(focusIndex+1)%focusPool.length;renderGrid();},FOCUS_ROTATION_MS);
+setInterval(()=>{sbPage=(sbPage+1)%3;renderSidebar();},SB_ROTATION_MS);
+</script>
+</body>
+</html>

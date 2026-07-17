@@ -1,7 +1,48 @@
+# ---- Secrets: never commit ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa
+id_ed25519
+*.p12
+secrets/
+*secret*
+espn_cookies.json
+credentials.json
+token.json
+ical_urls.txt
+
+# ---- Python ----
 .venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ---- Node / test pollution (this is not a Node project) ----
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+
+# ---- Logs, data, models, media ----
 *.log
-.env
+logs/
+data/
+*.sqlite
+*.sqlite3
+*.db
+models/
+*.mp4
+*.mov
+recordings/
+
+# ---- OS / editor ----
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/

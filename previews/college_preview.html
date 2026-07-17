@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dorm Wire — College Saturday (Preview)</title>
+<!-- Self-contained double-click preview of the college football arcade board with sample data. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06030d;--panel:#0d0820;--panel-2:#120a2b;--ink:#f4f6ff;--dim:#8b86b8;
+  --cyan:#23f0ff;--magenta:#ff2fb9;--green:#39ff14;--amber:#ffd23a;--red:#ff3b5c;
+  --line:rgba(35,240,255,.35);--line-dim:rgba(140,130,200,.28);
+  --pixel:"Press Start 2P",monospace;--term:"VT323",monospace;
+}
+*{box-sizing:border-box;}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;}
+body{background:radial-gradient(circle at 50% -10%,rgba(255,47,185,.12),transparent 40%),radial-gradient(circle at 100% 100%,rgba(35,240,255,.10),transparent 45%),var(--bg);color:var(--ink);font-family:var(--term);}
+body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;}
+body::before{background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.6px);background-size:6px 6px;opacity:.5;mix-blend-mode:screen;}
+body::after{background:repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px);opacity:.35;}
+h1,p{margin:0;}
+.screen{display:flex;flex-direction:column;gap:1.4vh;width:100vw;height:100vh;padding:1.8vh 1.8vw 13vh;}
+
+.hud{display:flex;align-items:center;justify-content:space-between;gap:2vw;border:3px solid var(--line);box-shadow:0 0 20px rgba(35,240,255,.25),inset 0 0 26px rgba(255,47,185,.08);background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:1.4vh 1.4vw;}
+.brand{display:flex;align-items:center;gap:1vw;}
+.brand-mark{display:grid;place-items:center;width:clamp(48px,4.2vw,74px);aspect-ratio:1;border:3px solid var(--cyan);background:#05030f;color:var(--cyan);font-family:var(--pixel);font-size:clamp(13px,1.2vw,20px);text-shadow:0 0 10px var(--cyan);}
+.brand-text h1{font-family:var(--pixel);font-size:clamp(16px,1.9vw,34px);text-shadow:0 0 12px rgba(35,240,255,.6);letter-spacing:1px;}
+.brand-text p{font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:var(--magenta);text-shadow:0 0 8px var(--magenta);margin-top:.7vh;letter-spacing:2px;}
+.brand-text small{display:block;margin-top:.5vh;color:var(--dim);font-size:clamp(13px,1vw,18px);letter-spacing:2px;}
+.counters{display:flex;gap:.9vw;}
+.counters div{display:grid;place-items:center;min-width:6.5vw;padding:.6vh .6vw;border:2px solid var(--line-dim);background:rgba(0,0,0,.3);}
+.counters span{font-family:var(--pixel);font-size:clamp(6px,.62vw,9px);color:var(--dim);letter-spacing:1px;}
+.counters strong{font-size:clamp(26px,2.6vw,50px);font-weight:400;line-height:.9;color:var(--amber);text-shadow:0 0 12px rgba(255,210,58,.55);}
+.clock-block{display:flex;flex-direction:column;align-items:flex-end;}
+.clock-block time{font-size:clamp(30px,3.2vw,62px);line-height:.9;color:var(--cyan);text-shadow:0 0 14px rgba(35,240,255,.6);}
+.clock-block span{margin-top:.5vh;font-family:var(--pixel);font-size:clamp(6px,.62vw,9px);color:var(--dim);letter-spacing:1px;}
+
+.board{flex:1;display:flex;flex-direction:column;min-height:0;gap:1vh;}
+.board-meta{display:flex;align-items:center;justify-content:space-between;border:2px solid var(--line-dim);border-left:8px solid var(--magenta);padding:.5vh .8vw;background:rgba(0,0,0,.35);}
+.board-meta span{font-family:var(--pixel);font-size:clamp(7px,.78vw,12px);letter-spacing:1px;}
+.board-meta span:first-child{color:var(--cyan);}
+.board-meta span:last-child{color:var(--dim);}
+
+.layout{flex:1;display:grid;grid-template-columns:1fr clamp(240px,24vw,360px);gap:.8vw;min-height:0;}
+.games-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:.6vw;min-height:0;}
+
+.tile{--team:var(--cyan);position:relative;display:grid;grid-template-rows:auto auto 1fr auto;min-width:0;min-height:0;overflow:hidden;border:2px solid var(--line-dim);background:linear-gradient(180deg,rgba(18,10,43,.96),rgba(6,3,13,.98));padding:clamp(6px,.7vw,12px);}
+.tile::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--team);box-shadow:0 0 12px var(--team);}
+.tile.live{border-color:var(--team);}
+.tile.live::before{animation:lamp 2.6s ease-in-out infinite;}
+.tile.final::before{opacity:.4;}
+.tile.featured{grid-column:span 2;grid-row:span 2;border-color:var(--team);box-shadow:0 0 26px color-mix(in srgb,var(--team) 45%,transparent),inset 0 0 26px rgba(0,0,0,.4);}
+.tile.featured::before{height:7px;}
+.tile>*{position:relative;z-index:1;}
+
+.tile-top{display:flex;align-items:center;justify-content:space-between;gap:.4vw;}
+.badge{font-family:var(--pixel);font-size:clamp(6px,.62vw,10px);color:var(--dim);letter-spacing:1px;white-space:nowrap;}
+.live .badge{color:var(--green);text-shadow:0 0 8px var(--green);}
+.scheduled .badge{color:var(--amber);}
+.featured .badge{color:var(--amber);text-shadow:0 0 8px var(--amber);}
+.tile-top .detail{font-size:clamp(14px,1.35vw,26px);color:var(--amber);white-space:nowrap;}
+
+.focus-reasons{display:flex;flex-wrap:wrap;gap:.4vw;margin-top:.6vh;}
+.focus-reasons span{font-family:var(--pixel);font-size:clamp(6px,.6vw,9px);color:var(--ink);border:1px solid var(--team);background:color-mix(in srgb,var(--team) 18%,transparent);padding:.4vh .4vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+
+.rows{display:grid;align-content:center;gap:.5vh;min-height:0;}
+.trow{display:grid;grid-template-columns:auto auto auto 1fr auto;align-items:center;gap:.45vw;min-width:0;}
+.poss{color:var(--amber);font-size:clamp(13px,1.1vw,20px);text-shadow:0 0 10px var(--amber);width:1ch;}
+.poss.off{opacity:0;}
+.rank{font-family:var(--pixel);font-size:clamp(6px,.6vw,10px);color:#06030d;background:var(--amber);padding:2px 3px;}
+.code{font-size:clamp(22px,1.9vw,40px);line-height:1;color:var(--ink);text-shadow:0 0 8px color-mix(in srgb,var(--team) 60%,transparent);}
+.name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pixel);font-size:clamp(6px,.58vw,9px);color:var(--dim);}
+.score{font-size:clamp(26px,2.2vw,46px);line-height:.9;color:var(--ink);text-align:right;text-shadow:0 0 10px rgba(255,255,255,.25);}
+.featured .code{font-size:clamp(34px,3.4vw,64px);}
+.featured .score{font-size:clamp(38px,3.6vw,68px);}
+.featured .name{font-size:clamp(8px,.8vw,14px);}
+
+.field{display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;gap:.4vw;height:clamp(24px,3.2vh,40px);margin-top:.8vh;}
+.ez{display:grid;place-items:center;width:clamp(34px,3.4vw,56px);font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:#06030d;background:var(--c,#888);}
+.turf{position:relative;background:#07120a;border-top:2px solid rgba(255,255,255,.18);border-bottom:2px solid rgba(255,255,255,.18);background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 2px,transparent 2px 10%);}
+.rz{position:absolute;top:0;bottom:0;width:20%;}
+.rz.right{right:0;background:linear-gradient(90deg,transparent,rgba(255,59,92,.45));}
+.rz.left{left:0;background:linear-gradient(270deg,transparent,rgba(255,59,92,.45));}
+.ball{position:absolute;top:-4px;bottom:-4px;width:3px;background:#fff;box-shadow:0 0 10px #fff;transform:translateX(-50%);}
+.ball i{position:absolute;top:50%;left:50%;width:clamp(10px,1vw,14px);height:clamp(7px,.7vw,9px);background:var(--amber);border-radius:50%;transform:translate(-50%,-50%) rotate(-20deg);box-shadow:0 0 12px var(--amber);}
+
+.tile-foot{display:flex;align-items:center;justify-content:space-between;gap:.6vw;border-top:1px solid var(--line-dim);padding-top:.5vh;margin-top:.4vh;}
+.count{font-size:clamp(13px,1.05vw,20px);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.featured .count{color:var(--ink);}
+.rzflag{font-family:var(--pixel);font-size:clamp(6px,.58vw,9px);color:#fff;background:var(--red);padding:.4vh .5vw;white-space:nowrap;animation:pulse 1.4s ease-in-out infinite;}
+
+/* ALSO PLAYING sidebar */
+.sidebar{border:2px solid var(--magenta);background:linear-gradient(180deg,rgba(30,8,30,.96),rgba(6,3,13,.98));padding:.9vh .8vw;display:flex;flex-direction:column;gap:.7vh;min-height:0;overflow:hidden;position:relative;}
+.sb-head{display:flex;align-items:center;justify-content:space-between;}
+.sb-title{font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:var(--magenta);text-shadow:0 0 8px var(--magenta);}
+.dots{display:flex;gap:4px;}
+.dot{width:7px;height:7px;border:1px solid var(--magenta);}
+.dot.on{background:var(--magenta);box-shadow:0 0 6px var(--magenta);}
+.sb-conf{font-family:var(--pixel);font-size:clamp(8px,.85vw,13px);color:var(--amber);border-bottom:1px dashed rgba(255,210,58,.3);padding-bottom:.5vh;}
+.sb-list{display:flex;flex-direction:column;gap:.2vh;overflow:hidden;}
+.pg{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5vw;padding:.5vh 0;border-bottom:1px solid rgba(140,130,200,.15);}
+.pg .teams{font-size:clamp(14px,1.15vw,20px);color:var(--ink);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.pg .prk{font-family:var(--pixel);font-size:clamp(5px,.5vw,8px);color:#06030d;background:var(--amber);padding:1px 3px;margin-right:3px;}
+.pg .st{font-size:clamp(12px,1vw,17px);color:var(--dim);white-space:nowrap;}
+.pg .st.fin{color:#5a5570;}
+
+.ticker{position:fixed;left:0;right:0;bottom:0;height:11vh;min-height:74px;z-index:40;display:flex;align-items:stretch;border-top:3px solid var(--line);background:#04020a;}
+.ticker.breaking-mode{border-top-color:var(--red);background:linear-gradient(90deg,rgba(120,20,40,.9),#100208 30%);}
+.ticker-league{display:grid;place-items:center;width:min(15vw,230px);background:var(--magenta);color:#06030d;font-family:var(--pixel);font-size:clamp(11px,1.2vw,20px);box-shadow:0 0 20px rgba(255,47,185,.5);text-align:center;}
+.ticker-window{flex:1;overflow:hidden;display:flex;align-items:center;}
+.ticker-track{display:flex;width:max-content;white-space:nowrap;animation:scroll 95s linear infinite;}
+.ticker-item{display:inline-flex;align-items:center;margin-right:3vw;font-size:clamp(18px,1.7vw,32px);color:var(--ink);}
+.ticker-item::before{content:attr(data-label);margin-right:.9vw;font-family:var(--pixel);font-size:.42em;letter-spacing:1px;color:var(--cyan);border:1px solid var(--cyan);padding:.4em .5em;}
+.ticker-item.upset::before{color:var(--ink);background:var(--red);border-color:var(--red);}
+.ticker-item.upset{color:var(--amber);}
+.ticker-item.news::before{color:var(--ink);border-color:var(--line-dim);}
+.ticker-item small{margin-left:.6vw;font-size:.5em;color:var(--dim);}
+
+@keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+@keyframes lamp{0%,100%{opacity:.7;}50%{opacity:1;}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 rgba(255,59,92,0);}50%{box-shadow:0 0 16px rgba(255,59,92,.7);}}
+@media(max-width:1100px){.games-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
+</head>
+<body>
+  <main class="screen">
+    <header class="hud">
+      <div class="brand">
+        <div class="brand-mark">DW</div>
+        <div class="brand-text"><h1>DORM WIRE</h1><p>COLLEGE SATURDAY</p><small>HURST 11</small></div>
+      </div>
+      <div class="counters">
+        <div><span>GAMES</span><strong id="total-count">0</strong></div>
+        <div><span>LIVE</span><strong id="live-count">0</strong></div>
+        <div><span>RANKED</span><strong id="ranked-count">0</strong></div>
+      </div>
+      <div class="clock-block"><time id="clock">--:--</time><span id="last-updated">PREVIEW</span></div>
+    </header>
+    <section class="board">
+      <div class="board-meta"><span id="date-label">SATURDAY, SEP 19</span><span id="status-note">TOP-25 PRIORITY · OVERFLOW ROTATES BY CONFERENCE</span></div>
+      <div class="layout">
+        <div id="games-grid" class="games-grid"></div>
+        <aside class="sidebar" id="sidebar"></aside>
+      </div>
+    </section>
+  </main>
+  <footer id="ticker" class="ticker">
+    <div class="ticker-league">CFB WIRE</div>
+    <div class="ticker-window"><div id="ticker-track" class="ticker-track"></div></div>
+  </footer>
+
+<script>
+const TEAM={
+  MICH:"#ffcb05",USC:"#ffc72c",UGA:"#ff4d4d",TENN:"#ff7a18",BAMA:"#ff5a6e",MISS:"#3aa0ff",
+  TEX:"#ff7a2e",OU:"#ff4155",ORE:"#4ce0b3",WASH:"#a06bff",PSU:"#4f7cff",WISC:"#ff4155",
+  ND:"#ffd23a",LSU:"#6f7bff",AUB:"#ff8a3d",CLEM:"#ff6a2c",FSU:"#ffb52e"
+};
+const color=a=>TEAM[a]||"#23f0ff";
+const FOCUS_ROTATION_MS=6000, CONF_ROTATION_MS=4500;
+
+// priority games (fill the main grid)
+const GAMES=[
+  { id:1, live:true, final:false, abstract:"Live", detail:"2ND · 4:02", q:2, rivalry:false,
+    away:{ab:"MICH",nm:"Michigan",sc:14,rank:4}, home:{ab:"USC",nm:"USC",sc:10,rank:8},
+    sit:{poss:"USC", dd:"3RD & 3", ballOn:"USC 35", yard:65, rz:false},
+    reasons:["#4 vs #8","TOP-10","2ND HALF","ONE SCORE"] },
+  { id:2, live:true, final:false, abstract:"Live", detail:"3RD · 8:11", q:3,
+    away:{ab:"UGA",nm:"Georgia",sc:21,rank:1}, home:{ab:"TENN",nm:"Tennessee",sc:17,rank:12},
+    sit:{poss:"TENN", dd:"1ST & 10", ballOn:"UGA 44", yard:56, rz:false} },
+  { id:3, live:true, final:false, abstract:"Live", detail:"2ND · 1:20", q:2,
+    away:{ab:"BAMA",nm:"Alabama",sc:17,rank:3}, home:{ab:"MISS",nm:"Ole Miss",sc:14,rank:15},
+    sit:{poss:"BAMA", dd:"2ND & 6", ballOn:"MISS 12", yard:88, rz:true} },
+  { id:4, live:true, final:false, abstract:"Live", detail:"1ST · 6:44", q:1, rivalry:true,
+    away:{ab:"TEX",nm:"Texas",sc:7,rank:6}, home:{ab:"OU",nm:"Oklahoma",sc:7,rank:9},
+    sit:{poss:"TEX", dd:"1ST & 10", ballOn:"TEX 30", yard:30, rz:false} },
+  { id:5, live:true, final:false, abstract:"Live", detail:"3RD · 11:02", q:3,
+    away:{ab:"PSU",nm:"Penn State",sc:24,rank:7}, home:{ab:"WISC",nm:"Wisconsin",sc:20,rank:18},
+    sit:{poss:"WISC", dd:"3RD & 8", ballOn:"WISC 22", yard:22, rz:false} },
+  { id:6, live:true, final:false, abstract:"Live", detail:"2ND · 9:30", q:2,
+    away:{ab:"LSU",nm:"LSU",sc:14,rank:11}, home:{ab:"AUB",nm:"Auburn",sc:13,rank:20},
+    sit:{poss:null, dd:"", ballOn:"", yard:50, rz:false} },
+  { id:7, live:false, final:true, abstract:"Final", detail:"FINAL",
+    away:{ab:"ORE",nm:"Oregon",sc:27,rank:5}, home:{ab:"WASH",nm:"Washington",sc:24,rank:null} },
+  { id:8, live:true, final:false, abstract:"Live", detail:"1ST · 2:15", q:1,
+    away:{ab:"CLEM",nm:"Clemson",sc:3,rank:13}, home:{ab:"FSU",nm:"Florida St",sc:0,rank:22},
+    sit:{poss:"CLEM", dd:"4TH & 1", ballOn:"FSU 40", yard:60, rz:false} },
+  { id:9, live:false, final:false, abstract:"Preview", detail:"7:30 PM",
+    away:{ab:"ND",nm:"Notre Dame",sc:0,rank:10}, home:{ab:"USC",nm:"—",sc:0,rank:null}, start:"7:30 PM" },
+];
+
+// overflow, grouped by conference (rotates through the sidebar)
+const CONFS=[
+  { name:"SEC", games:[
+    ["MIZZ",21,"VANDY",14,"3Q",null,null],["KENT",10,"S CAR",17,"2Q",null,null],
+    ["ARK",28,"MISS ST",24,"FINAL",null,null],["TAMU",31,"LA",7,"3Q",23,null],
+    ["FLA",20,"UK",13,"4Q",null,null] ]},
+  { name:"BIG TEN", games:[
+    ["MSU",17,"MD",20,"4Q",null,null],["MINN",24,"RUTG",10,"FINAL",null,null],
+    ["ILL",14,"IND",21,"2Q",null,16],["NW",3,"PUR",10,"1Q",null,null],
+    ["IOWA",13,"NEB",10,"3Q",19,null] ]},
+  { name:"ACC", games:[
+    ["LOU",28,"PITT",24,"3Q",null,null],["UNC",17,"DUKE",14,"2Q",null,null],
+    ["VT",21,"BC",10,"4Q",null,null],["SYR",13,"WAKE",20,"FINAL",null,null],
+    ["MIA",34,"GT",21,"3Q",14,null] ]},
+  { name:"BIG 12", games:[
+    ["KSU",24,"ISU",21,"FINAL",21,null],["TCU",30,"BAY",27,"4Q",null,null],
+    ["UCF",17,"CIN",14,"2Q",null,null],["TTU",35,"HOU",21,"3Q",17,null],
+    ["UTAH",28,"AZ ST",24,"4Q",25,null] ]},
+  { name:"GROUP OF 5", games:[
+    ["BOISE",34,"FRES",21,"3Q",24,null],["MEM",28,"TULN",24,"4Q",null,null],
+    ["APP",21,"GA SO",17,"2Q",null,null],["TOL",30,"NIU",14,"FINAL",null,null],
+    ["JMU",31,"MRSH",28,"4Q",null,null] ]},
+];
+
+const TICKER=[
+  { text:"Ole Miss in the red zone trailing Bama by 3 late in the 2nd", cat:"news", src:"live" },
+  { text:"UPSET ALERT: unranked Washington leads #5 Oregon in the 4th", cat:"upset", src:"live" },
+  { text:"Red River even at 7 as #6 Texas and #9 Oklahoma trade blows", cat:"news", src:"live" },
+  { text:"Final: #5 Oregon survives Washington 27-24", cat:"upset", src:"CFB" },
+  { text:"#1 Georgia pulls ahead of #12 Tennessee in the 3rd", cat:"news", src:"live" },
+];
+
+const el=s=>document.querySelector(s);
+let focusIndex=0, confIndex=0, focusPool=[];
+
+function focusScore(g){
+  let s=0;const r=[];
+  if(g.live){s+=45;r.push("LIVE");}
+  const ar=g.away.rank, hr=g.home.rank;
+  if(ar&&hr){s+=32;r.push("RANKED CLASH");if(ar<=10&&hr<=10){s+=18;r.push("TOP-10");}}
+  else if(ar||hr){s+=14;}
+  if(g.rivalry){s+=25;r.push("RIVALRY");}
+  const diff=Math.abs(g.away.sc-g.home.sc);
+  if(g.live&&g.q>=3&&diff<=7){s+=28;r.push("2ND HALF · CLOSE");}
+  if(g.sit&&g.sit.rz){s+=30;r.push("RED ZONE");}
+  return {s, r:(g.reasons||r)};
+}
+function buildPool(){
+  focusPool=GAMES.map(g=>({g,f:focusScore(g)})).filter(e=>e.f.s>0||!e.g.final)
+    .sort((a,b)=>b.f.s-a.f.s).slice(0,5);
+}
+function stateClass(g){return g.live?"live":g.final?"final":"scheduled";}
+
+function teamRow(g,t,featured){
+  const isPoss=g.sit&&g.sit.poss===t.ab;
+  const poss=`<span class="poss ${isPoss?"":"off"}">&#9654;</span>`;
+  const rank=t.rank?`<span class="rank">${t.rank}</span>`:`<span></span>`;
+  const val=g.abstract==="Preview"?"-":t.sc;
+  return `<div class="trow">${poss}${rank}<span class="code" style="color:${color(t.ab)}">${t.ab}</span>`
+    +`<span class="name">${featured?t.nm:""}</span><strong class="score">${val}</strong></div>`;
+}
+function fieldHTML(g){
+  if(!g.live||!g.sit||!g.sit.poss)return "";
+  const rzSide=g.sit.yard>50?"right":"left";
+  return `<div class="field"><span class="ez" style="--c:${color(g.away.ab)}">${g.away.ab}</span>`
+    +`<div class="turf">${g.sit.rz?`<span class="rz ${rzSide}"></span>`:""}<span class="ball" style="left:${g.sit.yard}%"><i></i></span></div>`
+    +`<span class="ez" style="--c:${color(g.home.ab)}">${g.home.ab}</span></div>`;
+}
+function footHTML(g){
+  let line;
+  if(g.live&&g.sit&&g.sit.dd) line=g.sit.dd+(g.sit.ballOn?` · ${g.sit.ballOn}`:"");
+  else if(g.live) line="IN PROGRESS";
+  else if(g.abstract==="Preview") line=`KICKOFF ${g.start}`;
+  else line="FINAL";
+  const rz=(g.live&&g.sit&&g.sit.rz)?`<span class="rzflag">RED ZONE</span>`:"";
+  return `<div class="tile-foot"><span class="count">${line}</span>${rz}</div>`;
+}
+function tile(g,featured){
+  const {r}=focusScore(g);
+  const accent=color(g.home.ab)==="#23f0ff"?color(g.away.ab):color(g.home.ab);
+  const label=featured?"GAME FOCUS":(g.abstract==="Preview"?"PREGAME":g.abstract.toUpperCase());
+  const reasons=featured?`<div class="focus-reasons">${r.slice(0,4).map(x=>`<span>${x}</span>`).join("")}</div>`:"";
+  return `<article class="tile ${stateClass(g)} ${featured?"featured":""}" style="--team:${accent}">`
+    +`<div class="tile-top"><span class="badge">${label}</span><span class="detail">${g.detail}</span></div>`
+    +`${reasons}<div class="rows">${teamRow(g,g.away,featured)}${teamRow(g,g.home,featured)}</div>`
+    +`${featured?fieldHTML(g):""}${footHTML(g)}</article>`;
+}
+function renderGrid(){
+  const focus=focusPool[focusIndex%Math.max(focusPool.length,1)].g;
+  const rest=GAMES.filter(g=>g.id!==focus.id).slice(0,8);
+  el("#games-grid").innerHTML=[tile(focus,true),...rest.map(g=>tile(g,false))].join("");
+}
+function renderSidebar(){
+  const c=CONFS[confIndex%CONFS.length];
+  const dots=CONFS.map((_,x)=>`<span class="dot ${x===confIndex?"on":""}"></span>`).join("");
+  const rows=c.games.map(g=>{
+    const ar=g[5]?`<span class="prk">${g[5]}</span>`:"";
+    const hr=g[6]?`<span class="prk">${g[6]}</span>`:"";
+    const fin=g[4]==="FINAL"?"fin":"";
+    return `<div class="pg"><span class="teams">${ar}${g[0]} ${g[1]} &middot; ${hr}${g[2]} ${g[3]}</span><span class="st ${fin}">${g[4]}</span></div>`;
+  }).join("");
+  el("#sidebar").innerHTML=`<div class="sb-head"><span class="sb-title">ALSO PLAYING</span><span class="dots">${dots}</span></div>`
+    +`<div class="sb-conf">${c.name}</div><div class="sb-list">${rows}</div>`;
+}
+function renderTicker(){
+  const items=TICKER.map(i=>{
+    const cls=i.cat==="upset"?"upset":"news";
+    const lab=i.cat==="upset"?"UPSET":"CFB";
+    return `<span class="ticker-item ${cls}" data-label="${lab}">${i.text}<small>${i.src}</small></span>`;
+  }).join("");
+  el("#ticker").className="ticker breaking-mode";
+  el("#ticker-track").innerHTML=`<span>${items}</span><span>${items}</span>`;
+}
+function counts(){
+  const overflow=CONFS.reduce((n,c)=>n+c.games.length,0);
+  el("#total-count").textContent=GAMES.length+overflow;
+  const live=GAMES.filter(g=>g.live).length+CONFS.reduce((n,c)=>n+c.games.filter(g=>g[4]!=="FINAL").length,0);
+  el("#live-count").textContent=live;
+  const ranked=GAMES.filter(g=>g.away.rank||g.home.rank).length;
+  el("#ranked-count").textContent=ranked;
+}
+function clock(){
+  const d=new Date();let h=d.getHours();const m=d.getMinutes();const ap=h>=12?"PM":"AM";h=h%12||12;
+  el("#clock").textContent=`${h}:${m<10?"0"+m:m} ${ap}`;
+}
+buildPool();counts();renderGrid();renderSidebar();renderTicker();clock();
+setInterval(clock,15000);
+setInterval(()=>{focusIndex=(focusIndex+1)%focusPool.length;renderGrid();},FOCUS_ROTATION_MS);
+setInterval(()=>{confIndex=(confIndex+1)%CONFS.length;renderSidebar();},CONF_ROTATION_MS);
+</script>
+</body>
+</html>
