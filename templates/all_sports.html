@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dorm Wire — Tonight / All Sports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06030d;--panel:#0d0820;--panel-2:#120a2b;--ink:#f4f6ff;--dim:#8b86b8;
+  --cyan:#23f0ff;--magenta:#ff2fb9;--green:#39ff14;--amber:#ffd23a;--red:#ff3b5c;
+  --line:rgba(35,240,255,.35);--line-dim:rgba(140,130,200,.28);
+  --pixel:"Press Start 2P",monospace;--term:"VT323",monospace;
+}
+*{box-sizing:border-box;}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;}
+body{background:radial-gradient(circle at 50% -10%,rgba(255,47,185,.12),transparent 40%),radial-gradient(circle at 100% 100%,rgba(35,240,255,.10),transparent 45%),var(--bg);color:var(--ink);font-family:var(--term);}
+body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;}
+body::before{background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.6px);background-size:6px 6px;opacity:.5;mix-blend-mode:screen;}
+body::after{background:repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px);opacity:.35;}
+h1,p{margin:0;}
+.screen{display:flex;flex-direction:column;gap:1.4vh;width:100vw;height:100vh;padding:1.8vh 1.8vw 13vh;}
+
+.hud{display:flex;align-items:center;justify-content:space-between;gap:2vw;border:3px solid var(--line);box-shadow:0 0 20px rgba(35,240,255,.25),inset 0 0 26px rgba(255,47,185,.08);background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:1.4vh 1.4vw;}
+.brand{display:flex;align-items:center;gap:1vw;}
+.brand-mark{display:grid;place-items:center;width:clamp(48px,4.2vw,74px);aspect-ratio:1;border:3px solid var(--cyan);background:#05030f;color:var(--cyan);font-family:var(--pixel);font-size:clamp(13px,1.2vw,20px);text-shadow:0 0 10px var(--cyan);}
+.brand-text h1{font-family:var(--pixel);font-size:clamp(16px,1.9vw,34px);text-shadow:0 0 12px rgba(35,240,255,.6);letter-spacing:1px;}
+.brand-text p{font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:var(--magenta);text-shadow:0 0 8px var(--magenta);margin-top:.7vh;letter-spacing:2px;}
+.brand-text small{display:block;margin-top:.5vh;color:var(--dim);font-size:clamp(13px,1vw,18px);letter-spacing:2px;}
+.counters{display:flex;gap:.9vw;}
+.counters div{display:grid;place-items:center;min-width:6.5vw;padding:.6vh .6vw;border:2px solid var(--line-dim);background:rgba(0,0,0,.3);}
+.counters span{font-family:var(--pixel);font-size:clamp(6px,.62vw,9px);color:var(--dim);letter-spacing:1px;}
+.counters strong{font-size:clamp(26px,2.6vw,50px);font-weight:400;line-height:.9;color:var(--amber);text-shadow:0 0 12px rgba(255,210,58,.55);}
+.clock-block{display:flex;flex-direction:column;align-items:flex-end;}
+.clock-block time{font-size:clamp(30px,3.2vw,62px);line-height:.9;color:var(--cyan);text-shadow:0 0 14px rgba(35,240,255,.6);}
+.clock-block span{margin-top:.5vh;font-family:var(--pixel);font-size:clamp(6px,.62vw,9px);color:var(--dim);letter-spacing:1px;}
+
+.board{flex:1;display:flex;flex-direction:column;min-height:0;gap:1vh;}
+.board-meta{display:flex;align-items:center;justify-content:space-between;border:2px solid var(--line-dim);border-left:8px solid var(--magenta);padding:.5vh .8vw;background:rgba(0,0,0,.35);}
+.board-meta span{font-family:var(--pixel);font-size:clamp(7px,.78vw,12px);letter-spacing:1px;}
+.board-meta span:first-child{color:var(--cyan);}
+.board-meta span:last-child{color:var(--dim);}
+
+.layout{flex:1;display:grid;grid-template-columns:1fr clamp(240px,23vw,340px);gap:.8vw;min-height:0;}
+.games-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:.6vw;min-height:0;}
+
+.tile{--team:var(--cyan);position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:2px solid var(--line-dim);background:linear-gradient(180deg,rgba(18,10,43,.96),rgba(6,3,13,.98));padding:clamp(6px,.7vw,12px);gap:.4vh;}
+.tile::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--team);box-shadow:0 0 12px var(--team);}
+.tile.live{border-color:var(--team);}
+.tile.live::before{animation:lamp 2.6s ease-in-out infinite;}
+.tile.final::before{opacity:.4;}
+.tile.featured{grid-column:span 2;grid-row:span 2;border-color:var(--team);box-shadow:0 0 26px color-mix(in srgb,var(--team) 45%,transparent),inset 0 0 26px rgba(0,0,0,.4);}
+.tile.featured::before{height:7px;}
+.tile>*{position:relative;z-index:1;}
+
+.tile-top{display:flex;align-items:center;justify-content:space-between;gap:.4vw;}
+.league{font-family:var(--pixel);font-size:clamp(6px,.62vw,10px);color:#06030d;padding:3px 5px;letter-spacing:.5px;}
+.lg-nba{background:#ff8a3d;} .lg-nhl{background:#5cc8ff;} .lg-mlb{background:#39ff14;} .lg-mls{background:#ff6ad5;} .lg-nfl{background:#ffd23a;} .lg-cfb{background:#ffb347;} .lg-epl{background:#c8f542;} .lg-cbb{background:#ff9de0;}
+.detail{font-size:clamp(14px,1.35vw,26px);color:var(--amber);white-space:nowrap;}
+.live .detail{color:var(--green);text-shadow:0 0 8px var(--green);}
+
+.focus-reasons{display:flex;flex-wrap:wrap;gap:.4vw;}
+.focus-reasons span{font-family:var(--pixel);font-size:clamp(6px,.6vw,9px);color:var(--ink);border:1px solid var(--team);background:color-mix(in srgb,var(--team) 18%,transparent);padding:.4vh .4vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+
+.rows{display:grid;gap:.4vh;}
+.featured .rows{margin:.3vh 0;}
+.trow{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:.45vw;min-width:0;}
+.star{color:var(--amber);font-size:clamp(11px,.9vw,16px);text-shadow:0 0 8px var(--amber);width:1ch;}
+.star.off{opacity:0;}
+.code{font-size:clamp(20px,1.75vw,38px);line-height:1;color:var(--ink);text-shadow:0 0 8px color-mix(in srgb,var(--team) 60%,transparent);}
+.name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pixel);font-size:clamp(6px,.55vw,9px);color:var(--dim);}
+.score{font-size:clamp(24px,2vw,44px);line-height:.9;color:var(--ink);text-align:right;text-shadow:0 0 10px rgba(255,255,255,.25);}
+.featured .code{font-size:clamp(32px,3.1vw,60px);}
+.featured .score{font-size:clamp(36px,3.3vw,64px);}
+.featured .name{font-size:clamp(8px,.8vw,14px);}
+
+.wp{margin-top:.2vh;}
+.wp-bar{display:flex;height:clamp(8px,1vh,12px);border:1px solid rgba(255,255,255,.2);overflow:hidden;}
+.wp-bar i{display:block;height:100%;}
+.wp-lbl{display:flex;justify-content:space-between;font-family:var(--pixel);font-size:clamp(6px,.56vw,9px);color:var(--dim);margin-top:.3vh;}
+
+.viz{display:flex;align-items:center;gap:.6vw;height:clamp(26px,3.4vh,44px);}
+.viz .vlabel{font-size:clamp(13px,1.05vw,20px);color:var(--ink);white-space:nowrap;}
+.diamond{position:relative;width:clamp(34px,3vw,46px);height:100%;flex:0 0 auto;}
+.base{position:absolute;width:10px;height:10px;border:2px solid rgba(244,246,255,.4);transform:rotate(45deg);}
+.base.second{top:8%;left:38%;} .base.third{top:42%;left:8%;} .base.first{top:42%;right:8%;}
+.base.on{border-color:var(--amber);background:var(--amber);box-shadow:0 0 10px var(--amber);}
+.court{position:relative;flex:1;height:100%;border:2px solid rgba(255,255,255,.18);border-radius:4px;background:#0a0f16;overflow:hidden;}
+.court .cmid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,255,255,.15);}
+.court .carc{position:absolute;top:50%;right:6%;width:20px;height:20px;border:2px solid rgba(255,255,255,.22);border-radius:50%;transform:translateY(-50%);}
+.court .hoop{position:absolute;top:50%;right:2%;width:5px;height:5px;background:var(--amber);border-radius:50%;transform:translateY(-50%);box-shadow:0 0 8px var(--amber);}
+.court .cball{position:absolute;top:50%;width:9px;height:9px;background:#ff8a3d;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 9px #ff8a3d;}
+.rink{position:relative;flex:1;height:100%;border:2px solid rgba(120,180,255,.3);border-radius:16px;background:#0a1420;overflow:hidden;}
+.rink .rmid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,80,80,.6);transform:translateX(-50%);}
+.rink .rblue{position:absolute;top:0;bottom:0;width:2px;background:rgba(90,150,255,.5);}
+.rink .puck{position:absolute;top:50%;width:7px;height:7px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px #fff;}
+.pitch{position:relative;flex:1;height:100%;border:2px solid rgba(80,220,120,.3);border-radius:3px;background:#08140c;overflow:hidden;}
+.pitch .pmid{position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,255,255,.18);transform:translateX(-50%);}
+.pitch .pcirc{position:absolute;top:50%;left:50%;width:18px;height:18px;border:2px solid rgba(255,255,255,.22);border-radius:50%;transform:translate(-50%,-50%);}
+.pitch .pball{position:absolute;top:50%;width:8px;height:8px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px #fff;}
+.ffield{position:relative;flex:1;height:100%;background:#07130a;border-top:2px solid rgba(255,255,255,.18);border-bottom:2px solid rgba(255,255,255,.18);background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.14) 0 2px,transparent 2px 10%);overflow:hidden;border-radius:2px;}
+.ffield .rz{position:absolute;top:0;bottom:0;right:0;width:18%;background:linear-gradient(90deg,transparent,rgba(255,59,92,.45));}
+.ffield .fball{position:absolute;top:50%;width:11px;height:7px;background:var(--amber);border-radius:50%;transform:translate(-50%,-50%) rotate(-18deg);box-shadow:0 0 10px var(--amber);}
+
+.leaders{font-size:clamp(12px,.98vw,18px);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.leaders b{color:var(--ink);}
+.leaders .lg-key{color:var(--amber);font-family:var(--pixel);font-size:.7em;margin-right:.4vw;}
+
+.tile-foot{display:flex;align-items:center;justify-content:space-between;gap:.6vw;border-top:1px solid var(--line-dim);padding-top:.4vh;margin-top:auto;}
+.count{font-size:clamp(13px,1.02vw,19px);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.featured .count{color:var(--ink);}
+.flag{font-family:var(--pixel);font-size:clamp(6px,.56vw,9px);color:#06030d;background:var(--amber);padding:.4vh .5vw;white-space:nowrap;}
+.flag.hot{background:var(--red);color:#fff;animation:pulse 1.4s ease-in-out infinite;}
+
+/* sidebar: all leagues at once */
+.sidebar{border:2px solid var(--magenta);background:linear-gradient(180deg,rgba(30,8,30,.96),rgba(6,3,13,.98));padding:.9vh .8vw;display:flex;flex-direction:column;gap:.4vh;min-height:0;overflow:hidden;position:relative;}
+.sb-head{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;}
+.sb-title{font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:var(--magenta);text-shadow:0 0 8px var(--magenta);}
+.sb-sub{font-family:var(--pixel);font-size:clamp(5px,.5vw,8px);color:var(--dim);}
+.sb-body{display:flex;flex-direction:column;gap:.3vh;min-height:0;overflow:hidden;}
+.sb-section{display:flex;flex-direction:column;}
+.sb-lg{font-family:var(--pixel);font-size:clamp(7px,.7vw,11px);letter-spacing:.5px;padding:.6vh 0 .3vh;border-bottom:1px dashed rgba(255,255,255,.18);margin-top:.4vh;}
+.sb-lg.nba{color:#ff8a3d;} .sb-lg.nhl{color:#5cc8ff;} .sb-lg.mlb{color:#39ff14;} .sb-lg.mls{color:#ff6ad5;} .sb-lg.nfl{color:#ffd23a;} .sb-lg.cfb{color:#ffb347;} .sb-lg.epl{color:#c8f542;} .sb-lg.cbb{color:#ff9de0;}
+.pg{display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5vw;padding:.35vh 0;border-bottom:1px solid rgba(140,130,200,.13);}
+.pg .teams{font-size:clamp(13px,1.08vw,19px);color:var(--ink);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.pg .st{font-size:clamp(11px,.92vw,16px);color:var(--dim);white-space:nowrap;}
+.pg .st.fin{color:#5a5570;}
+
+.ticker{position:fixed;left:0;right:0;bottom:0;height:11vh;min-height:74px;z-index:40;display:flex;align-items:stretch;border-top:3px solid var(--line);background:#04020a;}
+.ticker-league{display:grid;place-items:center;width:min(14vw,210px);background:var(--magenta);color:#06030d;font-family:var(--pixel);font-size:clamp(11px,1.2vw,20px);box-shadow:0 0 20px rgba(255,47,185,.5);text-align:center;}
+.ticker-window{flex:1;overflow:hidden;display:flex;align-items:center;}
+.ticker-track{display:flex;width:max-content;white-space:nowrap;animation:scroll 95s linear infinite;}
+.ticker-item{display:inline-flex;align-items:center;margin-right:3vw;font-size:clamp(18px,1.7vw,32px);color:var(--ink);}
+.ticker-item::before{content:attr(data-label);margin-right:.9vw;font-family:var(--pixel);font-size:.42em;letter-spacing:1px;color:var(--cyan);border:1px solid var(--cyan);padding:.4em .5em;}
+.ticker-item.hot{color:var(--amber);}
+.ticker-item.hot::before{color:#06030d;background:var(--amber);border-color:var(--amber);}
+.ticker-item small{margin-left:.6vw;font-size:.5em;color:var(--dim);}
+
+@keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+@keyframes lamp{0%,100%{opacity:.7;}50%{opacity:1;}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 rgba(255,59,92,0);}50%{box-shadow:0 0 16px rgba(255,59,92,.7);}}
+@media(max-width:1100px){.games-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
+</head>
+<body>
+  <main class="screen">
+    <header class="hud">
+      <div class="brand">
+        <div class="brand-mark">DW</div>
+        <div class="brand-text"><h1>DORM WIRE</h1><p>TONIGHT · ALL SPORTS</p><small>HURST 11</small></div>
+      </div>
+      <div class="counters">
+        <div><span>LIVE</span><strong id="live-count">0</strong></div>
+        <div><span>SPORTS</span><strong id="sport-count">0</strong></div>
+        <div><span>GAMES</span><strong id="total-count">0</strong></div>
+      </div>
+      <div class="clock-block"><time id="clock">--:--</time><span id="last-updated">SYNCING…</span></div>
+    </header>
+    <section class="board">
+      <div class="board-meta"><span id="date-label">LOADING SLATE</span><span id="status-note">BEST GAMES ACROSS EVERY SPORT</span></div>
+      <div class="layout">
+        <div id="games-grid" class="games-grid"><article class="tile"><span>LOADING…</span></article></div>
+        <aside class="sidebar" id="sidebar"></aside>
+      </div>
+    </section>
+  </main>
+  <footer id="ticker" class="ticker">
+    <div class="ticker-league">THE WIRE</div>
+    <div class="ticker-window"><div id="ticker-track" class="ticker-track"><span>Loading the wire…</span></div></div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/all_sports.js') }}"></script>
+</body>
+</html>

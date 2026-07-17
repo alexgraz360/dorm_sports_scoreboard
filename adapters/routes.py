@@ -10,12 +10,51 @@ from __future__ import annotations
 from datetime import datetime
 
 import requests
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, render_template
 
 from .config import ENABLED_LEAGUES, ESPN_LEAGUES
-from .espn import EASTERN, build_ticker, build_today
+from .espn import (
+    EASTERN,
+    build_all_ticker,
+    build_all_today,
+    build_ticker,
+    build_today,
+)
 
 sports_bp = Blueprint("sports", __name__)
+
+
+@sports_bp.route("/all")
+def all_sports_board():
+    """Live all-sports board (arcade). Mirrors previews/all_sports_preview.html
+    but fetches /api/all/today + /api/all/ticker instead of embedded demo data."""
+    return render_template("all_sports.html")
+
+
+@sports_bp.route("/api/all/today")
+def all_today():
+    try:
+        return jsonify(build_all_today())
+    except requests.RequestException as exc:
+        return jsonify({
+            "sport": "all",
+            "generatedAt": datetime.now(EASTERN).isoformat(),
+            "error": f"Could not reach ESPN scoreboard: {exc}",
+            "featured": None, "games": [],
+        }), 502
+
+
+@sports_bp.route("/api/all/ticker")
+def all_ticker():
+    try:
+        return jsonify(build_all_ticker())
+    except requests.RequestException as exc:
+        return jsonify({
+            "sport": "all",
+            "generatedAt": datetime.now(EASTERN).isoformat(),
+            "error": f"Could not build ticker feed: {exc}",
+            "items": [],
+        }), 502
 
 
 def _supported(sport: str) -> bool:

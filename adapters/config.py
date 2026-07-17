@@ -24,6 +24,7 @@ FAVORITES: dict[str, dict[str, list[str]]] = {
 # extra query args (CFB needs groups=80 for FBS). "family" drives how the live
 # detail string and situation are built.
 ESPN_LEAGUES: dict[str, dict] = {
+    "mlb": {"path": "baseball/mlb", "label": "MLB", "family": "baseball"},
     "nfl": {"path": "football/nfl", "label": "NFL", "family": "football"},
     "cfb": {
         "path": "football/college-football",
@@ -42,9 +43,15 @@ ESPN_LEAGUES: dict[str, dict] = {
     "mls": {"path": "soccer/usa.1", "label": "MLS", "family": "soccer"},
 }
 
-# Which leagues have a live backend endpoint wired up so far. Phase 2 ships
-# NFL + CFB; Phase 3 extends this to the all-sports set.
-ENABLED_LEAGUES = ("nfl", "cfb")
+# Which leagues have their own live /api/<sport>/today endpoint via the ESPN
+# blueprint. MLB is intentionally excluded here: it keeps its dedicated
+# statsapi route in app.py (the blueprint's dynamic route would be shadowed by
+# it anyway). ESPN's mlb entry above is used only by the all-sports aggregator.
+ENABLED_LEAGUES = ("nfl", "cfb", "nba", "cbb", "nhl", "epl")
+
+# Leagues the all-sports board aggregates, in display priority order. The
+# aggregator pulls whichever of these have games today and skips the rest.
+ALL_SPORTS_LEAGUES = ("mlb", "nba", "nhl", "epl", "mls", "nfl", "cfb")
 
 # Fallback accent colors (hex) used only when a feed does not supply one.
 FALLBACK_ACCENTS: dict[str, str] = {

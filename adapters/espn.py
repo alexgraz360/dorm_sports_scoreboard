@@ -148,6 +148,76 @@ def _football_situation(comp: dict, away_ab: str, home_ab: str) -> dict | None:
     }
 
 
+def _baseball_situation(comp: dict) -> dict | None:
+    sit = _get(comp, "situation")
+    if not isinstance(sit, dict):
+        return None
+    return {
+        "bases": {
+            "first": bool(sit.get("onFirst")),
+            "second": bool(sit.get("onSecond")),
+            "third": bool(sit.get("onThird")),
+        },
+        "balls": _to_int(sit.get("balls"), 0),
+        "strikes": _to_int(sit.get("strikes"), 0),
+        "outs": _to_int(sit.get("outs"), 0),
+    }
+
+
+def _viz(family: str, game: dict) -> dict | None:
+    """Per-sport field graphic descriptor the all-sports board renders."""
+    sit = game.get("situation") or {}
+    if family == "baseball" and sit:
+        extra = f"{sit.get('balls', 0)}-{sit.get('strikes', 0)} · {sit.get('outs', 0)} OUT"
+        return {"k": "mlb", "bases": sit.get("bases", {}), "extra": extra}
+    if family == "football" and sit:
+        return {"k": game["sport"], "yard": sit.get("yard", 50),
+                "extra": " · ".join(x for x in (sit.get("downDistance"), sit.get("ballOn")) if x)}
+    return None
+
+
+def _flag(family: str, game: dict) -> tuple[str, bool]:
+    """(flag text, hot?) — the small pill on a tile. Hot pulses red."""
+    sit = game.get("situation") or {}
+    if not game["isLive"]:
+        return "", False
+    if family == "football" and sit.get("redZone"):
+        return "RED ZONE", True
+    if family == "baseball":
+        b = sit.get("bases", {})
+        if b.get("first") and b.get("second") and b.get("third"):
+            return "BASES LOADED", True
+        if b.get("second") or b.get("third"):
+            return "RISP", False
+    diff = abs(game["away"]["score"] - game["home"]["score"])
+    if diff == 0:
+        return "TIE GAME", False
+    if family in ("basketball",) and diff <= 3:
+        return "CLUTCH", True
+    if diff <= 2:
+        return "ONE SCORE", False
+    return "", False
+
+
+def _leaders(comp: dict) -> list | None:
+    """Best-effort top performer per team: [[teamAbbrev, 'Name 34 PTS'], ...]."""
+    cats = _get(comp, "leaders", default=[]) or []
+    out = []
+    for cat in cats:
+        leader = _get(cat, "leaders", 0, default=None)
+        if not leader:
+            continue
+        athlete = _get(leader, "athlete", default={}) or {}
+        team_ab = (_get(athlete, "team", "abbreviation", default="") or "").upper()
+        name = athlete.get("shortName") or athlete.get("displayName") or ""
+        value = leader.get("displayValue") or ""
+        if name and value:
+            out.append([team_ab, f"{name} {value}"])
+        if len(out) >= 2:
+            break
+    return out or None
+
+
 def _focus(game: dict, family: str) -> dict:
     """Focus score + human reasons; mirrors the previews' priority logic."""
     score, reasons = 0, []
@@ -172,6 +242,9 @@ def _focus(game: dict, family: str) -> dict:
     if "OT" in (game.get("detail") or ""):
         score += 40
         reasons.append("OT")
+    if game.get("hot") and game.get("flag") and game["flag"] not in reasons:
+        score += 18
+        reasons.append(game["flag"])
     return {"score": score, "reasons": reasons[:4]}
 
 
@@ -209,6 +282,14 @@ def _map_event(league: str, family: str, event: dict) -> dict | None:
     }
     if family == "football":
         game["situation"] = _football_situation(comp, away["abbrev"], home["abbrev"])
+    elif family == "baseball":
+        game["situation"] = _baseball_situation(comp)
+    game["viz"] = _viz(family, game)
+    game["leaders"] = _leaders(comp)
+    game["winProb"] = None  # ESPN win probability lives on a separate endpoint
+    flag, hot = _flag(family, game)
+    game["flag"] = flag
+    game["hot"] = hot
     focus = _focus(game, family)
     game["focusScore"] = focus["score"]
     game["focusReasons"] = focus["reasons"]
@@ -327,4 +408,84 @@ def build_ticker(league: str) -> dict:
         "generatedAt": datetime.now(EASTERN).isoformat(),
         "source": "ESPN",
         "items": items[:24],
+    }
+
+
+def build_all_today(leagues=None) -> dict:
+    """Aggregated all-sports payload: the best games across every league today.
+
+    Pulls each league that has games; a league that errors is skipped (never
+    blanks the whole board). Games are tagged with `sport` and sorted by focus
+    so favorites and live/close games float to the featured slot.
+    """
+    from .config import ALL_SPORTS_LEAGUES
+
+    leagues = leagues or ALL_SPORTS_LEAGUES
+    now = datetime.now(EASTERN)
+    all_games: list[dict] = []
+    sports_with_games: list[str] = []
+    for league in leagues:
+        if league not in ESPN_LEAGUES:
+            continue
+        try:
+            games = fetch_games(league)
+        except requests.RequestException:
+            continue
+        if games:
+            sports_with_games.append(league)
+            all_games.extend(games)
+
+    all_games.sort(key=lambda g: (not g["isLive"], -g["focusScore"], g["sortKey"]))
+    live = [g for g in all_games if g["isLive"]]
+    featured = all_games[0]["id"] if all_games else None
+    return {
+        "sport": "all",
+        "league": "ALL SPORTS",
+        "date": now.strftime("%Y-%m-%d"),
+        "displayDate": f"{now.strftime('%A, %B')} {now.day}, {now.year}",
+        "generatedAt": now.isoformat(),
+        "source": "ESPN scoreboard",
+        "featured": featured,
+        "sportCount": len(sports_with_games),
+        "liveCount": len(live),
+        "games": all_games,
+    }
+
+
+def build_all_ticker(leagues=None) -> dict:
+    """Combined wire across leagues: live hot items first, then finals."""
+    from .config import ALL_SPORTS_LEAGUES
+
+    leagues = leagues or ALL_SPORTS_LEAGUES
+    hot: list[dict] = []
+    finals: list[dict] = []
+    for league in leagues:
+        if league not in ESPN_LEAGUES:
+            continue
+        try:
+            games = fetch_games(league)
+        except requests.RequestException:
+            continue
+        for g in games:
+            away, home = g["away"], g["home"]
+            if g["isLive"] and (g.get("hot") or abs(away["score"] - home["score"]) <= 3):
+                label = g.get("flag") or "LIVE"
+                hot.append({
+                    "text": f"{label}: {away['shortName']} {away['score']}, "
+                            f"{home['shortName']} {home['score']} — {g['detail']}",
+                    "category": "hot", "source": g["sport"].upper(),
+                })
+            elif g["isFinal"]:
+                win, lose = (away, home) if away["score"] > home["score"] else (home, away)
+                finals.append({
+                    "text": f"Final ({g['sport'].upper()}): {win['shortName']} {win['score']}, "
+                            f"{lose['shortName']} {lose['score']}",
+                    "category": "", "source": g["sport"].upper(),
+                })
+    return {
+        "sport": "all",
+        "league": "THE WIRE",
+        "generatedAt": datetime.now(EASTERN).isoformat(),
+        "source": "ESPN",
+        "items": (hot + finals)[:30],
     }
