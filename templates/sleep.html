@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dorm Wire — Asleep</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#141018;overflow:hidden;
+    font-family:"Courier New",monospace;cursor:none;}
+  .wrap{height:100%;display:grid;place-items:center;}
+  .dot{font-size:12px;letter-spacing:2px;color:#1c1622;}
+</style>
+</head>
+<body>
+  <div class="wrap"><div class="dot">· · ·</div></div>
+  <script>
+    // The panel is physically off (HDMI/CEC) 01:00-06:00; this page is just a
+    // black safety fallback. Poll the selector and jump back to the live board
+    // the moment we are outside the sleep window.
+    async function check(){
+      try{
+        const r = await fetch("/api/board", {cache:"no-store"});
+        const d = await r.json();
+        if(!d.asleep){ location.href = d.url || "/board"; }
+      }catch(e){}
+    }
+    setInterval(check, 60000);
+    check();
+  </script>
+</body>
+</html>
