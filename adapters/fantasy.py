@@ -153,26 +153,39 @@ def _build_person_rail(username: str, season: str, week: int) -> dict | None:
 
 
 def build_fantasy_rail() -> dict:
-    """Live rail from Sleeper if usernames are configured, else sample data."""
+    """Live rail from Sleeper if usernames are configured, else sample data.
+
+    Tries the current NFL season first; if a person has no league yet (e.g. the
+    new season hasn't been renewed/drafted), it falls back to the most recent
+    prior season so a real league still shows. It auto-upgrades to the current
+    season the moment that league exists.
+    """
     people_cfg = {
         "Alex": os.getenv("SLEEPER_USERNAME_ALEX"),
         "Jordan": os.getenv("SLEEPER_USERNAME_JORDAN"),
     }
     state = get_nfl_state()
-    season = str(state.get("season") or datetime.now(EASTERN).year)
+    cur_season = int(state.get("season") or datetime.now(EASTERN).year)
     week = int(state.get("week") or 1) or 1
+    candidate_seasons = [cur_season, cur_season - 1, cur_season - 2]
 
     people = []
+    used_seasons: set[str] = set()
     for _person, username in people_cfg.items():
         if not username:
             continue
-        rail = _build_person_rail(username, season, week)
-        if rail:
-            people.append(rail)
+        for season in candidate_seasons:
+            rail = _build_person_rail(username, str(season), week)
+            if rail:
+                rail["season"] = str(season)
+                rail["current"] = season == cur_season
+                used_seasons.add(str(season))
+                people.append(rail)
+                break
 
     if people:
-        return {"source": "Sleeper", "season": season, "week": week,
-                "demo": False, "people": people}
+        return {"source": "Sleeper", "season": str(cur_season), "week": week,
+                "seasonsShown": sorted(used_seasons), "demo": False, "people": people}
     return _sample_rail()
 
 
