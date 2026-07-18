@@ -183,10 +183,138 @@ def build_fantasy_rail() -> dict:
                 people.append(rail)
                 break
 
+    # ESPN leagues (secondary): merged into Alex's entry, or added if absent.
+    espn_cookies = _espn_cookies()
+    if espn_cookies and _espn_league_ids():
+        for espn_year in (cur_season, cur_season - 1):
+            espn_person = _build_espn_person(espn_cookies, espn_year)
+            if espn_person:
+                alex = next((p for p in people if p["person"] == "Alex"), None)
+                if alex:
+                    alex["leagues"].extend(espn_person["leagues"])
+                else:
+                    people.append(espn_person)
+                break
+
     if people:
-        return {"source": "Sleeper", "season": str(cur_season), "week": week,
+        return {"source": "Sleeper+ESPN", "season": str(cur_season), "week": week,
                 "seasonsShown": sorted(used_seasons), "demo": False, "people": people}
     return _sample_rail()
+
+
+# ============ ESPN fantasy (secondary; private leagues need cookies) ============
+
+ESPN_FANTASY_BASE = ("https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl"
+                     "/seasons/{year}/segments/0/leagues/{league_id}")
+# lineupSlotId -> position label. Bench/IR (20/21) and slot 24 are not starters.
+ESPN_SLOTS = {0: "QB", 2: "RB", 3: "RB/WR", 4: "WR", 5: "WR/TE", 6: "TE",
+              7: "OP", 16: "D/ST", 17: "K", 23: "FLEX"}
+ESPN_BENCH_SLOTS = {20, 21, 24}
+
+
+def _espn_cookies() -> dict | None:
+    s2, swid = os.getenv("ESPN_S2"), os.getenv("ESPN_SWID")
+    if not s2 or not swid:
+        return None
+    if not swid.startswith("{"):
+        swid = "{" + swid.strip("{}") + "}"
+    return {"espn_s2": s2, "SWID": swid}
+
+
+def _espn_league_ids() -> list[str]:
+    raw = os.getenv("ESPN_LEAGUE_IDS", "")
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def _fetch_espn_league(league_id: str, year: int, cookies: dict) -> dict | None:
+    url = ESPN_FANTASY_BASE.format(year=year, league_id=league_id)
+    try:
+        r = requests.get(url, timeout=TIMEOUT, headers=UA, cookies=cookies,
+                         params=[("view", v) for v in
+                                 ("mTeam", "mRoster", "mMatchup", "mSettings")])
+        r.raise_for_status()
+        return r.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+
+def _espn_my_team(league: dict, swid: str) -> dict | None:
+    swid_norm = swid.strip("{}").upper()
+    for team in league.get("teams", []) or []:
+        owners = [str(o).strip("{}").upper() for o in (team.get("owners") or [])]
+        if swid_norm in owners:
+            return team
+    return None
+
+
+def _espn_team_name(team: dict) -> str:
+    return (team.get("name")
+            or f"{team.get('location', '')} {team.get('nickname', '')}".strip()
+            or f"Team {team.get('id', '?')}")
+
+
+def _espn_starters(team: dict) -> list[dict]:
+    entries = ((team.get("roster") or {}).get("entries")) or []
+    out = []
+    for e in entries:
+        slot = e.get("lineupSlotId")
+        if slot in ESPN_BENCH_SLOTS:
+            continue
+        player = ((e.get("playerPoolEntry") or {}).get("player")) or {}
+        out.append({
+            "name": player.get("fullName", "—"),
+            "pos": ESPN_SLOTS.get(slot, ""),
+            "points": round(float(e.get("playerPoolEntry", {}).get("appliedStatTotal", 0) or 0), 1),
+        })
+    return out
+
+
+def _espn_current_week(league: dict) -> int:
+    status = league.get("status") or {}
+    return int(status.get("currentMatchupPeriod") or 1) or 1
+
+
+def _build_espn_person(cookies: dict, year: int) -> dict | None:
+    swid = cookies["SWID"]
+    leagues_out = []
+    for lid in _espn_league_ids():
+        league = _fetch_espn_league(lid, year, cookies)
+        if not league:
+            continue
+        me = _espn_my_team(league, swid)
+        if not me:
+            continue
+        week = _espn_current_week(league)
+        # Find this week's matchup for my team -> opponent.
+        opp_team, my_pts, opp_pts = None, 0.0, 0.0
+        for g in league.get("schedule", []) or []:
+            if g.get("matchupPeriodId") != week:
+                continue
+            home, away = g.get("home") or {}, g.get("away") or {}
+            if home.get("teamId") == me.get("id"):
+                my_pts, opp_pts = home.get("totalPoints", 0), away.get("totalPoints", 0)
+                opp_team = _espn_team_by_id(league, away.get("teamId"))
+                break
+            if away.get("teamId") == me.get("id"):
+                my_pts, opp_pts = away.get("totalPoints", 0), home.get("totalPoints", 0)
+                opp_team = _espn_team_by_id(league, home.get("teamId"))
+                break
+        leagues_out.append({
+            "league": (league.get("settings") or {}).get("name", "ESPN League"),
+            "week": week, "platform": "espn",
+            "me": {"name": _espn_team_name(me), "points": round(float(my_pts or 0), 1),
+                   "starters": _espn_starters(me)},
+            "opp": {"name": _espn_team_name(opp_team) if opp_team else "Opponent",
+                    "points": round(float(opp_pts or 0), 1)},
+        })
+    return {"person": "Alex", "leagues": leagues_out, "platform": "espn"} if leagues_out else None
+
+
+def _espn_team_by_id(league: dict, team_id) -> dict | None:
+    for t in league.get("teams", []) or []:
+        if t.get("id") == team_id:
+            return t
+    return None
 
 
 def detect_touchdowns(prev_stats: dict, curr_stats: dict, rostered: set) -> list:
