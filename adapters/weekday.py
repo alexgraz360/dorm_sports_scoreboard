@@ -14,7 +14,7 @@ the board never blanks. Secret values are read by name and never logged.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import requests
 
@@ -165,6 +165,83 @@ def _unfold_ical(text: str) -> list[str]:
     return lines
 
 
+_WEEKDAY_CODES = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
+
+
+def _parse_rrule(value: str) -> dict:
+    """Parse an RRULE value ('FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=...') into a dict.
+    BYDAY becomes a set of weekday ints; UNTIL a date."""
+    rule: dict = {}
+    for part in value.split(";"):
+        if "=" not in part:
+            continue
+        key, val = part.split("=", 1)
+        key = key.strip().upper()
+        if key == "BYDAY":
+            rule[key] = {_WEEKDAY_CODES[d[-2:]] for d in val.split(",")
+                         if d[-2:] in _WEEKDAY_CODES}
+        elif key == "UNTIL":
+            try:
+                rule[key] = datetime.strptime(val[:8], "%Y%m%d").date()
+            except ValueError:
+                pass
+        else:
+            rule[key] = val
+    return rule
+
+
+def _iter_occurrences(start: date, freq: str, interval: int, byday, cap: int = 4000):
+    """Yield recurrence dates in chronological order (bounded by cap)."""
+    if freq == "DAILY":
+        for i in range(cap):
+            yield start + timedelta(days=i * interval)
+    elif freq == "WEEKLY":
+        days = sorted(byday) if byday else [start.weekday()]
+        week0 = start - timedelta(days=start.weekday())
+        for w in range(cap):
+            base = week0 + timedelta(weeks=w * interval)
+            for wd in days:
+                yield base + timedelta(days=wd)
+    elif freq == "MONTHLY":
+        for i in range(cap):
+            m = start.month - 1 + i * interval
+            y, mo = start.year + m // 12, m % 12 + 1
+            try:
+                yield date(y, mo, start.day)
+            except ValueError:
+                continue
+    elif freq == "YEARLY":
+        for i in range(cap):
+            try:
+                yield date(start.year + i * interval, start.month, start.day)
+            except ValueError:
+                continue
+
+
+def _recurs_on(start: datetime, rule: dict, exdates: set, target: date) -> bool:
+    freq = rule.get("FREQ")
+    if not freq or target < start.date() or target in exdates:
+        return False
+    interval = int(rule.get("INTERVAL") or 1) or 1
+    count = int(rule["COUNT"]) if str(rule.get("COUNT", "")).isdigit() else None
+    until = rule.get("UNTIL")
+    d0 = start.date()
+    emitted = 0
+    for occ in _iter_occurrences(d0, freq, interval, rule.get("BYDAY")):
+        if occ < d0:
+            continue
+        if until and occ > until:
+            break
+        emitted += 1
+        if count is not None and emitted > count:
+            break
+        if occ == target:
+            return True
+        if occ > target:
+            break
+    return False
+
+
 def _parse_ical_today(text: str, now: datetime) -> list[dict]:
     today = now.date()
     events: list[dict] = []
@@ -172,16 +249,20 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
     in_event = False
     for line in _unfold_ical(text):
         if line.startswith("BEGIN:VEVENT"):
-            in_event, cur = True, {}
+            in_event, cur = True, {"exdates": set()}
         elif line.startswith("END:VEVENT"):
             in_event = False
             start = cur.get("start")
-            if start and start.date() == today:
+            if not start:
+                continue
+            occurs = start.date() == today or (
+                "rrule" in cur and _recurs_on(start, cur["rrule"], cur["exdates"], today))
+            if occurs:
                 ap = "a" if start.hour < 12 else "p"
                 h12 = start.hour % 12 or 12
                 events.append({
-                    "time": f"{h12}:{start.minute:02d}{ap}" if not cur.get("allday") else "all-day",
-                    "sort": start.hour * 60 + start.minute,
+                    "time": "all-day" if cur.get("allday") else f"{h12}:{start.minute:02d}{ap}",
+                    "sort": -1 if cur.get("allday") else start.hour * 60 + start.minute,
                     "title": cur.get("summary", "(busy)"),
                     "room": cur.get("location", "—"),
                     "now": 0,
@@ -193,16 +274,23 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
             if dt:
                 cur["start"] = dt
                 cur["allday"] = allday
+        elif in_event and line.startswith("RRULE"):
+            cur["rrule"] = _parse_rrule(line.split(":", 1)[-1].strip())
+        elif in_event and line.startswith("EXDATE"):
+            for v in line.split(":", 1)[-1].split(","):
+                d = _parse_ical_dt(v.strip(), now.tzinfo)
+                if d:
+                    cur["exdates"].add(d.date())
         elif in_event and line.startswith("SUMMARY"):
             cur["summary"] = line.split(":", 1)[-1].strip()
         elif in_event and line.startswith("LOCATION"):
-            cur["room"] = line.split(":", 1)[-1].strip() or "—"
-            cur["location"] = cur["room"]
+            cur["location"] = line.split(":", 1)[-1].strip() or "—"
     events.sort(key=lambda e: e["sort"])
-    # Mark the event happening now (started, next one not yet).
+    # Mark the event happening now (started, next one not yet). All-day skipped.
     now_min = now.hour * 60 + now.minute
-    for i, e in enumerate(events):
-        nxt = events[i + 1]["sort"] if i + 1 < len(events) else 24 * 60
+    timed = [e for e in events if e["sort"] >= 0]
+    for i, e in enumerate(timed):
+        nxt = timed[i + 1]["sort"] if i + 1 < len(timed) else 24 * 60
         if e["sort"] <= now_min < nxt:
             e["now"] = 1
     return events
