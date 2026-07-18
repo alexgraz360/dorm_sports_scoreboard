@@ -186,15 +186,13 @@ def build_fantasy_rail() -> dict:
     # ESPN leagues (secondary): merged into Alex's entry, or added if absent.
     espn_cookies = _espn_cookies()
     if espn_cookies and _espn_league_ids():
-        for espn_year in (cur_season, cur_season - 1):
-            espn_person = _build_espn_person(espn_cookies, espn_year)
-            if espn_person:
-                alex = next((p for p in people if p["person"] == "Alex"), None)
-                if alex:
-                    alex["leagues"].extend(espn_person["leagues"])
-                else:
-                    people.append(espn_person)
-                break
+        espn_person = _build_espn_person(espn_cookies, [cur_season, cur_season - 1])
+        if espn_person:
+            alex = next((p for p in people if p["person"] == "Alex"), None)
+            if alex:
+                alex["leagues"].extend(espn_person["leagues"])
+            else:
+                people.append(espn_person)
 
     if people:
         return {"source": "Sleeper+ESPN", "season": str(cur_season), "week": week,
@@ -274,39 +272,56 @@ def _espn_current_week(league: dict) -> int:
     return int(status.get("currentMatchupPeriod") or 1) or 1
 
 
-def _build_espn_person(cookies: dict, year: int) -> dict | None:
-    swid = cookies["SWID"]
+def _build_espn_league(lid: str, year: int, cookies: dict) -> dict | None:
+    """One ESPN league for one season, mapped to the rail shape, or None."""
+    league = _fetch_espn_league(lid, year, cookies)
+    if not league:
+        return None
+    me = _espn_my_team(league, cookies["SWID"])
+    if not me:
+        return None
+    week = _espn_current_week(league)
+    opp_team, my_pts, opp_pts = None, 0.0, 0.0
+    for g in league.get("schedule", []) or []:
+        if g.get("matchupPeriodId") != week:
+            continue
+        home, away = g.get("home") or {}, g.get("away") or {}
+        if home.get("teamId") == me.get("id"):
+            my_pts, opp_pts = home.get("totalPoints", 0), away.get("totalPoints", 0)
+            opp_team = _espn_team_by_id(league, away.get("teamId"))
+            break
+        if away.get("teamId") == me.get("id"):
+            my_pts, opp_pts = away.get("totalPoints", 0), home.get("totalPoints", 0)
+            opp_team = _espn_team_by_id(league, home.get("teamId"))
+            break
+    return {
+        "league": (league.get("settings") or {}).get("name", "ESPN League"),
+        "week": week, "platform": "espn", "season": str(year),
+        "me": {"name": _espn_team_name(me), "points": round(float(my_pts or 0), 1),
+               "starters": _espn_starters(me)},
+        "opp": {"name": _espn_team_name(opp_team) if opp_team else "Opponent",
+                "points": round(float(opp_pts or 0), 1)},
+    }
+
+
+def _build_espn_person(cookies: dict, seasons: list[int]) -> dict | None:
+    """Each league tries the seasons in order and keeps the first that has a
+    filled roster (so a pre-draft current season falls back to last year's real
+    lineup, matching the Sleeper behavior)."""
     leagues_out = []
     for lid in _espn_league_ids():
-        league = _fetch_espn_league(lid, year, cookies)
-        if not league:
-            continue
-        me = _espn_my_team(league, swid)
-        if not me:
-            continue
-        week = _espn_current_week(league)
-        # Find this week's matchup for my team -> opponent.
-        opp_team, my_pts, opp_pts = None, 0.0, 0.0
-        for g in league.get("schedule", []) or []:
-            if g.get("matchupPeriodId") != week:
+        best = None
+        for year in seasons:
+            entry = _build_espn_league(lid, year, cookies)
+            if not entry:
                 continue
-            home, away = g.get("home") or {}, g.get("away") or {}
-            if home.get("teamId") == me.get("id"):
-                my_pts, opp_pts = home.get("totalPoints", 0), away.get("totalPoints", 0)
-                opp_team = _espn_team_by_id(league, away.get("teamId"))
+            best = best or entry  # remember the first that at least resolves
+            if entry["me"]["starters"]:
+                best = entry
                 break
-            if away.get("teamId") == me.get("id"):
-                my_pts, opp_pts = away.get("totalPoints", 0), home.get("totalPoints", 0)
-                opp_team = _espn_team_by_id(league, home.get("teamId"))
-                break
-        leagues_out.append({
-            "league": (league.get("settings") or {}).get("name", "ESPN League"),
-            "week": week, "platform": "espn",
-            "me": {"name": _espn_team_name(me), "points": round(float(my_pts or 0), 1),
-                   "starters": _espn_starters(me)},
-            "opp": {"name": _espn_team_name(opp_team) if opp_team else "Opponent",
-                    "points": round(float(opp_pts or 0), 1)},
-        })
+        if best:
+            best["current"] = best["season"] == str(seasons[0])
+            leagues_out.append(best)
     return {"person": "Alex", "leagues": leagues_out, "platform": "espn"} if leagues_out else None
 
 
