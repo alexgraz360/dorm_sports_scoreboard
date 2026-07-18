@@ -100,7 +100,8 @@ function renderGrid() {
     return;
   }
   const focus = focusPool[focusIndex % Math.max(focusPool.length, 1)].g;
-  const rest = games.filter((g) => g.id !== focus.id).slice(0, 14);
+  // Narrower grid (fantasy sidebar takes the right column): show fewer tiles.
+  const rest = games.filter((g) => g.id !== focus.id).slice(0, 8);
   el("#games-grid").innerHTML = [tile(focus, true), ...rest.map((g) => tile(g, false))].join("");
 }
 
@@ -121,6 +122,103 @@ function renderTicker(feed) {
     : `<span class="ticker-item" data-label="${LEAGUE.toUpperCase()}">Wire warming up…</span>`;
   el("#ticker").className = `ticker ${mode}`;
   el("#ticker-track").innerHTML = `<span>${rendered}</span><span aria-hidden="true">${rendered}</span>`;
+}
+
+/* ---------------- fantasy rail + wire + TD animation ---------------- */
+let fantasyCards = [];   // flattened (person, league) entries
+let fantasyIndex = 0;
+let fantasyTimer = null;
+let seenTds = new Set();
+let fantasyPrimed = false;
+
+function renderFantasyRail() {
+  const box = el("#frail");
+  if (!box) return;
+  if (!fantasyCards.length) {
+    box.innerHTML = `<div class="fr-head"><span class="fr-title">FANTASY</span></div>`
+      + `<div class="fr-row"><span class="fr-pname">No leagues connected</span></div>`;
+    return;
+  }
+  const c = fantasyCards[fantasyIndex % fantasyCards.length];
+  const g = c.league;
+  const meWin = g.me.points >= g.opp.points;
+  const dots = fantasyCards.map((_, i) =>
+    `<span class="fr-dot ${i === fantasyIndex % fantasyCards.length ? "on" : ""}"></span>`).join("");
+  const seasonTag = g.current === false && g.season ? ` '${String(g.season).slice(2)}` : "";
+  const starters = (g.me.starters || []).slice(0, 10).map((s) =>
+    `<div class="fr-row"><span class="fr-pos">${esc(s.pos)}</span>`
+    + `<span class="fr-pname">${esc(s.name)}</span><span class="fr-ppts">${esc(s.points)}</span></div>`).join("");
+  box.innerHTML =
+    `<div class="fr-head"><span class="fr-title">${esc(c.person)} · FANTASY</span>`
+    + `<span class="fr-plat ${esc(g.platform || "sleeper")}">${esc((g.platform || "sleeper").toUpperCase())}</span></div>`
+    + `<div class="fr-league">${esc(g.league)}${seasonTag} · WK ${esc(g.week)}</div>`
+    + `<div class="fr-score">`
+    + `<div class="fr-team ${meWin ? "fr-win" : ""}"><span class="fr-nm">${esc(g.me.name)}</span><span class="fr-pts">${esc(g.me.points)}</span></div>`
+    + `<span class="fr-vs">VS</span>`
+    + `<div class="fr-team opp ${!meWin ? "fr-win" : ""}"><span class="fr-nm">${esc(g.opp.name)}</span><span class="fr-pts">${esc(g.opp.points)}</span></div>`
+    + `</div>`
+    + `<div class="fr-list">${starters}</div>`
+    + `<div class="fr-dots">${dots}</div>`;
+}
+
+function renderFantasyWire(wire) {
+  const box = el("#fwire");
+  if (!box) return;
+  const items = (wire && wire.items) || [];
+  const rows = items.slice(0, 6).map((i) => {
+    const kind = (i.kind || "score");
+    return `<div class="fw-item"><span class="fw-tag ${esc(kind)}">${esc(kind.toUpperCase())}</span>`
+      + `<span>${esc(i.text)}</span></div>`;
+  }).join("");
+  box.innerHTML = `<div class="fw-title">FANTASY WIRE</div>`
+    + `<div class="fw-list">${rows || '<div class="fw-item"><span>Quiet on the wire…</span></div>'}</div>`;
+  // Fire the TD animation for any touchdown we haven't shown yet.
+  const tds = items.filter((i) => (i.kind || "") === "td");
+  for (const td of tds) {
+    if (!seenTds.has(td.text)) {
+      seenTds.add(td.text);
+      if (fantasyPrimed) fireTdAnimation(td.text);
+    }
+  }
+  // On the very first load, don't retro-fire for every pre-existing TD — but
+  // do show one so the effect is visible, then only fire on genuinely new TDs.
+  if (!fantasyPrimed) {
+    fantasyPrimed = true;
+    if (tds.length) fireTdAnimation(tds[0].text);
+  }
+}
+
+let tdAnimTimer = null;
+function fireTdAnimation(text) {
+  const overlay = el("#td-anim");
+  if (!overlay) return;
+  const sub = el("#td-sub");
+  if (sub) sub.textContent = (text || "").replace(/^TOUCHDOWN:\s*/i, "");
+  overlay.classList.remove("show");
+  void overlay.offsetWidth; // restart the animation
+  overlay.classList.add("show");
+  clearTimeout(tdAnimTimer);
+  tdAnimTimer = setTimeout(() => overlay.classList.remove("show"), 2700);
+}
+
+async function loadFantasy() {
+  try {
+    const [rail, wire] = await Promise.all([
+      fetch("/api/fantasy/rail", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/fantasy/wire", { cache: "no-store" }).then((r) => r.json()),
+    ]);
+    fantasyCards = (rail.people || []).flatMap((p) =>
+      (p.leagues || []).map((lg) => ({ person: p.person, league: lg })))
+      // Skip empty/inactive leagues (no lineup and no points) so the rail only
+      // rotates through active teams.
+      .filter((c) => (c.league.me.starters || []).length > 0
+        || c.league.me.points > 0 || c.league.opp.points > 0);
+    if (fantasyIndex >= fantasyCards.length) fantasyIndex = 0;
+    renderFantasyRail();
+    renderFantasyWire(wire);
+  } catch (err) {
+    /* leave last render */
+  }
 }
 
 /* ---------------- counters + clock ---------------- */
@@ -164,17 +262,24 @@ async function loadTicker() {
   }
 }
 
+const FANTASY_ROTATE_MS = 8_000;
 function startTimers() {
   clearInterval(focusTimer);
   focusTimer = setInterval(() => {
     if (focusPool.length > 1) { focusIndex = (focusIndex + 1) % focusPool.length; renderGrid(); }
   }, FOCUS_ROTATION_MS);
+  clearInterval(fantasyTimer);
+  fantasyTimer = setInterval(() => {
+    if (fantasyCards.length > 1) { fantasyIndex = (fantasyIndex + 1) % fantasyCards.length; renderFantasyRail(); }
+  }, FANTASY_ROTATE_MS);
 }
 
 clock();
 setInterval(clock, 15_000);
 loadScores();
 loadTicker();
+loadFantasy();
 startTimers();
 setInterval(loadScores, REFRESH_MS);
 setInterval(loadTicker, REFRESH_MS);
+setInterval(loadFantasy, REFRESH_MS);

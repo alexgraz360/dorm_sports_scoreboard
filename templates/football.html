@@ -42,7 +42,50 @@ h1,p{margin:0;}
 .board-meta span{font-family:var(--pixel);font-size:clamp(7px,.78vw,12px);letter-spacing:1px;}
 .board-meta span:first-child{color:var(--cyan);}
 .board-meta span:last-child{color:var(--dim);}
-.games-grid{flex:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:1fr;gap:.6vw;min-height:0;}
+/* board layout: games on the left, fantasy rail + wire on the right */
+.layout{flex:1;display:grid;grid-template-columns:1fr clamp(260px,25vw,380px);gap:.8vw;min-height:0;}
+.games-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:.6vw;min-height:0;}
+
+/* fantasy sidebar */
+.fantasy{display:grid;grid-template-rows:1fr auto;gap:.8vh;min-height:0;}
+.frail{border:2px solid var(--amber);background:linear-gradient(180deg,rgba(40,30,6,.9),rgba(6,3,13,.98));padding:1vh .8vw;display:flex;flex-direction:column;gap:.7vh;min-height:0;overflow:hidden;}
+.fr-head{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;}
+.fr-title{font-family:var(--pixel);font-size:clamp(7px,.72vw,11px);color:var(--amber);text-shadow:0 0 8px var(--amber);letter-spacing:.5px;}
+.fr-league{font-family:var(--pixel);font-size:clamp(6px,.56vw,9px);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%;}
+.fr-plat{font-family:var(--pixel);font-size:clamp(5px,.5vw,8px);color:#06030d;padding:2px 4px;}
+.fr-plat.sleeper{background:#23f0ff;} .fr-plat.espn{background:#ff2fb9;color:#fff;}
+.fr-score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5vw;flex:0 0 auto;border-bottom:1px dashed rgba(255,210,58,.35);padding-bottom:.6vh;}
+.fr-team{display:flex;flex-direction:column;min-width:0;}
+.fr-team.opp{text-align:right;}
+.fr-nm{font-size:clamp(12px,1vw,18px);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fr-pts{font-size:clamp(22px,2vw,40px);line-height:1;color:var(--amber);text-shadow:0 0 10px rgba(255,210,58,.5);}
+.fr-team.opp .fr-pts{color:var(--ink);}
+.fr-vs{font-family:var(--pixel);font-size:clamp(7px,.6vw,10px);color:var(--dim);}
+.fr-win .fr-pts{color:var(--green);text-shadow:0 0 10px var(--green);}
+.fr-list{display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.fr-row{display:grid;grid-template-columns:2.4em 1fr auto;align-items:baseline;gap:.5vw;padding:.28vh 0;border-bottom:1px solid rgba(140,130,200,.13);font-size:clamp(12px,1vw,18px);}
+.fr-pos{font-family:var(--pixel);font-size:clamp(6px,.55vw,9px);color:var(--cyan);}
+.fr-pname{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fr-ppts{color:var(--dim);text-align:right;}
+.fr-dots{display:flex;gap:4px;justify-content:center;flex:0 0 auto;}
+.fr-dot{width:6px;height:6px;border:1px solid var(--amber);}
+.fr-dot.on{background:var(--amber);box-shadow:0 0 5px var(--amber);}
+
+.fwire{border:2px solid var(--green);background:#000;padding:.8vh .8vw;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:.4vh;position:relative;height:clamp(120px,22vh,220px);}
+.fwire::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.4) 0 1px,transparent 1px 3px);opacity:.35;}
+.fw-title{font-family:var(--pixel);font-size:clamp(7px,.66vw,10px);color:var(--green);text-shadow:0 0 8px var(--green);flex:0 0 auto;position:relative;z-index:1;}
+.fw-list{display:flex;flex-direction:column;gap:.35vh;overflow:hidden;position:relative;z-index:1;}
+.fw-item{font-size:clamp(12px,1vw,17px);color:#d6ffe8;display:flex;gap:.5vw;align-items:baseline;line-height:1.05;}
+.fw-tag{font-family:var(--pixel);font-size:clamp(6px,.52vw,8px);padding:2px 4px;flex:0 0 auto;color:#06030d;}
+.fw-tag.td{background:var(--amber);} .fw-tag.inj{background:var(--red);color:#fff;} .fw-tag.score{background:var(--cyan);}
+
+/* touchdown animation overlay */
+.td-anim{position:fixed;inset:0;z-index:60;display:none;place-items:center;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(255,210,58,.25),transparent 60%);}
+.td-anim.show{display:grid;animation:tdflash 2.6s ease-out forwards;}
+.td-anim .tdbig{font-family:var(--pixel);font-size:clamp(26px,5vw,90px);color:var(--amber);text-shadow:0 0 30px var(--amber),0 0 60px rgba(255,59,92,.6);text-align:center;transform:scale(.6);animation:tdpop 2.6s cubic-bezier(.2,1.4,.4,1) forwards;}
+.td-anim .tdsub{display:block;font-size:.32em;color:#fff;margin-top:1vh;text-shadow:0 0 12px var(--cyan);}
+@keyframes tdflash{0%{opacity:0;}12%{opacity:1;}80%{opacity:1;}100%{opacity:0;}}
+@keyframes tdpop{0%{transform:scale(.5) rotate(-6deg);}40%{transform:scale(1.05) rotate(2deg);}100%{transform:scale(1) rotate(0);}}
 
 .tile{--team:var(--cyan);position:relative;display:grid;grid-template-rows:auto auto 1fr auto;min-width:0;min-height:0;overflow:hidden;border:2px solid var(--line-dim);background:linear-gradient(180deg,rgba(18,10,43,.96),rgba(6,3,13,.98));padding:clamp(6px,.7vw,13px);}
 .tile::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--team);box-shadow:0 0 12px var(--team);}
@@ -139,13 +182,20 @@ h1,p{margin:0;}
     </header>
     <section class="board">
       <div class="board-meta"><span id="date-label">LOADING SLATE</span><span id="status-note">BUILDING GAME FOCUS</span></div>
-      <div id="games-grid" class="games-grid"><article class="tile"><span>LOADING…</span></article></div>
+      <div class="layout">
+        <div id="games-grid" class="games-grid"><article class="tile"><span>LOADING…</span></article></div>
+        <aside class="fantasy">
+          <div class="frail" id="frail"></div>
+          <div class="fwire" id="fwire"></div>
+        </aside>
+      </div>
     </section>
   </main>
   <footer id="ticker" class="ticker">
     <div class="ticker-league">{{ label }}</div>
     <div class="ticker-window"><div id="ticker-track" class="ticker-track"><span>Loading today's wire…</span></div></div>
   </footer>
+  <div id="td-anim" class="td-anim"><div class="tdbig">TOUCHDOWN!<span class="tdsub" id="td-sub"></span></div></div>
 
   <script src="{{ url_for('static', filename='js/football.js') }}"></script>
 </body>
