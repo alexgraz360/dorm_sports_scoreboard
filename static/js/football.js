@@ -172,33 +172,37 @@ function renderFantasyWire(wire) {
   }).join("");
   box.innerHTML = `<div class="fw-title">FANTASY WIRE</div>`
     + `<div class="fw-list">${rows || '<div class="fw-item"><span>Quiet on the wire…</span></div>'}</div>`;
-  // Fire the TD animation for any touchdown we haven't shown yet.
+  // Fire the TD animation for any touchdown we haven't shown yet. The real
+  // per-type scene lives in td_animation.js as window.fireTdAnimation(kind,…).
   const tds = items.filter((i) => (i.kind || "") === "td");
   for (const td of tds) {
     if (!seenTds.has(td.text)) {
       seenTds.add(td.text);
-      if (fantasyPrimed) fireTdAnimation(td.text);
+      if (fantasyPrimed) playTd(td);
     }
   }
   // On the very first load, don't retro-fire for every pre-existing TD — but
   // do show one so the effect is visible, then only fire on genuinely new TDs.
   if (!fantasyPrimed) {
     fantasyPrimed = true;
-    if (tds.length) fireTdAnimation(tds[0].text);
+    if (tds.length) playTd(tds[0]);
   }
 }
 
-let tdAnimTimer = null;
-function fireTdAnimation(text) {
-  const overlay = el("#td-anim");
-  if (!overlay) return;
-  const sub = el("#td-sub");
-  if (sub) sub.textContent = (text || "").replace(/^TOUCHDOWN:\s*/i, "");
-  overlay.classList.remove("show");
-  void overlay.offsetWidth; // restart the animation
-  overlay.classList.add("show");
-  clearTimeout(tdAnimTimer);
-  tdAnimTimer = setTimeout(() => overlay.classList.remove("show"), 2700);
+// Resolve a wire TD item to the animation's play type. Use an explicit field
+// if the backend supplies one (detect_touchdowns kind: passing/rushing/
+// receiving); otherwise infer from the wire text.
+function tdKind(td) {
+  const explicit = (td.tdType || td.playType || "").toLowerCase();
+  if (["passing", "rushing", "receiving"].includes(explicit)) return explicit;
+  const t = (td.text || "").toLowerCase();
+  if (/\b(pass|passing|threw|td pass|through the air)\b/.test(t)) return "passing";
+  if (/\b(reception|receiving|catch|caught|grab|hauls? in|td catch)\b/.test(t)) return "receiving";
+  return "rushing";
+}
+function playTd(td) {
+  const player = td.player || (td.text || "").replace(/^TOUCHDOWN:\s*/i, "");
+  if (typeof window.fireTdAnimation === "function") window.fireTdAnimation(tdKind(td), player);
 }
 
 async function loadFantasy() {

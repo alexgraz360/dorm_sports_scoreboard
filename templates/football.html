@@ -79,13 +79,7 @@ h1,p{margin:0;}
 .fw-tag{font-family:var(--pixel);font-size:clamp(6px,.52vw,8px);padding:2px 4px;flex:0 0 auto;color:#06030d;}
 .fw-tag.td{background:var(--amber);} .fw-tag.inj{background:var(--red);color:#fff;} .fw-tag.score{background:var(--cyan);}
 
-/* touchdown animation overlay */
-.td-anim{position:fixed;inset:0;z-index:60;display:none;place-items:center;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(255,210,58,.25),transparent 60%);}
-.td-anim.show{display:grid;animation:tdflash 2.6s ease-out forwards;}
-.td-anim .tdbig{font-family:var(--pixel);font-size:clamp(26px,5vw,90px);color:var(--amber);text-shadow:0 0 30px var(--amber),0 0 60px rgba(255,59,92,.6);text-align:center;transform:scale(.6);animation:tdpop 2.6s cubic-bezier(.2,1.4,.4,1) forwards;}
-.td-anim .tdsub{display:block;font-size:.32em;color:#fff;margin-top:1vh;text-shadow:0 0 12px var(--cyan);}
-@keyframes tdflash{0%{opacity:0;}12%{opacity:1;}80%{opacity:1;}100%{opacity:0;}}
-@keyframes tdpop{0%{transform:scale(.5) rotate(-6deg);}40%{transform:scale(1.05) rotate(2deg);}100%{transform:scale(1) rotate(0);}}
+/* touchdown animation overlay is styled/injected by td_animation.js */
 
 .tile{--team:var(--cyan);position:relative;display:grid;grid-template-rows:auto auto 1fr auto;min-width:0;min-height:0;overflow:hidden;border:2px solid var(--line-dim);background:linear-gradient(180deg,rgba(18,10,43,.96),rgba(6,3,13,.98));padding:clamp(6px,.7vw,13px);}
 .tile::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--team);box-shadow:0 0 12px var(--team);}
@@ -195,8 +189,9 @@ h1,p{margin:0;}
     <div class="ticker-league">{{ label }}</div>
     <div class="ticker-window"><div id="ticker-track" class="ticker-track"><span>Loading today's wire…</span></div></div>
   </footer>
-  <div id="td-anim" class="td-anim"><div class="tdbig">TOUCHDOWN!<span class="tdsub" id="td-sub"></span></div></div>
+  <div id="td-anim"></div>
 
   <script src="{{ url_for('static', filename='js/football.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/td_animation.js') }}"></script>
 </body>
 </html>
