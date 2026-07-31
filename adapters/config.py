@@ -89,13 +89,34 @@ WEATHER_LON = -74.425
 LOCATION_LABEL = "HURST 11"
 
 # Portfolio holdings (local config; quotes come from Finnhub). shares only.
+# Fractional shares come from dividend reinvestment — keep the decimals.
 PORTFOLIO_HOLDINGS = [
-    {"symbol": "AAPL", "shares": 42},
-    {"symbol": "NVDA", "shares": 15},
-    {"symbol": "MSFT", "shares": 8},
-    {"symbol": "SPY", "shares": 20},
-    {"symbol": "VTI", "shares": 30},
-    {"symbol": "TSLA", "shares": 6},
+    {"symbol": "AMC", "shares": 1},
+    {"symbol": "ASTS", "shares": 5},
+    {"symbol": "B", "shares": 8.03},
+    {"symbol": "CAIE", "shares": 26.23},
+    {"symbol": "COF", "shares": 2.096},
+    {"symbol": "COIN", "shares": 1},
+    {"symbol": "GMAB", "shares": 5},
+    {"symbol": "GOOG", "shares": 2.013},
+    {"symbol": "HIMS", "shares": 4},
+    {"symbol": "IBIT", "shares": 3},
+    {"symbol": "LMT", "shares": 4.077},
+    {"symbol": "LNTH", "shares": 2},
+    {"symbol": "LUNR", "shares": 5},
+    {"symbol": "NEM", "shares": 5.024},
+    {"symbol": "OKLO", "shares": 10},
+    {"symbol": "PFE", "shares": 3.368},
+    {"symbol": "PL", "shares": 5},
+    {"symbol": "PLTR", "shares": 2},
+    {"symbol": "RKLB", "shares": 5},
+    {"symbol": "SFM", "shares": 3},
+    {"symbol": "SKYW", "shares": 5},
+    {"symbol": "TGB", "shares": 35},
+    {"symbol": "TSLA", "shares": 4},
+    {"symbol": "UNH", "shares": 4.054},
+    {"symbol": "VNQ", "shares": 5.193},
+    {"symbol": "VOO", "shares": 4.088},
 ]
 WATCHLIST_SYMBOLS = ["PLTR", "AMD", "COIN", "NFLX", "META", "JPM"]
 # Ribbon: broad indices/tickers scrolled along the bottom.
