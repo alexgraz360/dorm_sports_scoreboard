@@ -466,12 +466,51 @@ def build_all_today(leagues=None) -> dict:
 
 
 def build_all_ticker(leagues=None) -> dict:
-    """Combined wire across leagues: live hot items first, then finals."""
+    """The Wire: real headlines from around the sports world.
+
+    The board tiles already show scores, bases and close-game flags, so the
+    ticker deliberately does NOT repeat game state — that was just reading the
+    screen back to the viewer. Instead it pulls ESPN's newsroom feed for each
+    league and interleaves them round-robin so one busy league cannot dominate
+    the crawl (SportsCenter-style). Big finals involving a favourite team are
+    the one score-ish exception, since those are genuinely news.
+    """
     from .config import ALL_SPORTS_LEAGUES
 
     leagues = leagues or ALL_SPORTS_LEAGUES
-    hot: list[dict] = []
-    finals: list[dict] = []
+    per_league: list[list[dict]] = []
+    for league in leagues:
+        if league not in ESPN_LEAGUES:
+            continue
+        cfg = ESPN_LEAGUES[league]
+        try:
+            news = _fetch_json(NEWS_URL.format(path=cfg["path"]))
+        except requests.RequestException as exc:
+            print(f"[dorm-wire] news fetch failed for {league}: {exc}",
+                  file=sys.stderr, flush=True)
+            continue
+        bucket = []
+        for article in (_get(news, "articles", default=[]) or [])[:6]:
+            headline = (article.get("headline") or article.get("description") or "").strip()
+            if not headline:
+                continue
+            bucket.append({
+                "text": headline,
+                "category": "",                      # plain headline styling
+                "source": cfg["label"],              # league badge on the crawl
+            })
+        if bucket:
+            per_league.append(bucket)
+
+    # Round-robin interleave so leagues alternate across the crawl.
+    items: list[dict] = []
+    for i in range(max((len(b) for b in per_league), default=0)):
+        for bucket in per_league:
+            if i < len(bucket):
+                items.append(bucket[i])
+
+    # Favourite-team finals are real news, so lead with them when they exist.
+    leads: list[dict] = []
     for league in leagues:
         if league not in ESPN_LEAGUES:
             continue
@@ -480,25 +519,22 @@ def build_all_ticker(leagues=None) -> dict:
         except requests.RequestException:
             continue
         for g in games:
+            if not g["isFinal"]:
+                continue
             away, home = g["away"], g["home"]
-            if g["isLive"] and (g.get("hot") or abs(away["score"] - home["score"]) <= 3):
-                label = g.get("flag") or "LIVE"
-                hot.append({
-                    "text": f"{label}: {away['shortName']} {away['score']}, "
-                            f"{home['shortName']} {home['score']} — {g['detail']}",
-                    "category": "hot", "source": g["sport"].upper(),
-                })
-            elif g["isFinal"]:
-                win, lose = (away, home) if away["score"] > home["score"] else (home, away)
-                finals.append({
-                    "text": f"Final ({g['sport'].upper()}): {win['shortName']} {win['score']}, "
-                            f"{lose['shortName']} {lose['score']}",
-                    "category": "", "source": g["sport"].upper(),
-                })
+            if not (away["fav"] or home["fav"]):
+                continue
+            win, lose = (away, home) if away["score"] > home["score"] else (home, away)
+            leads.append({
+                "text": f"FINAL: {win['shortName']} {win['score']}, {lose['shortName']} {lose['score']}",
+                "category": "hot",
+                "source": g["sport"].upper(),
+            })
+
     return {
         "sport": "all",
         "league": "THE WIRE",
         "generatedAt": datetime.now(EASTERN).isoformat(),
-        "source": "ESPN",
-        "items": (hot + finals)[:30],
+        "source": "ESPN newsroom",
+        "items": (leads + items)[:30],
     }
