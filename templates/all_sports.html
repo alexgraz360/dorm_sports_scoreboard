@@ -143,6 +143,14 @@ h1,p{margin:0;}
 @keyframes lamp{0%,100%{opacity:.7;}50%{opacity:1;}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 rgba(255,59,92,0);}50%{box-shadow:0 0 16px rgba(255,59,92,.7);}}
 @media(max-width:1100px){.games-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* --- ticker performance (Pi 4 @ 4K): keep the crawl on its own GPU layer so
+   it does not repaint the CRT overlay/glow every frame --- */
+.ticker{contain:layout paint style;}
+.ticker-window{contain:layout paint;}
+.ticker-track{will-change:transform;transform:translateZ(0);backface-visibility:hidden;}
+.ticker-item{text-shadow:none;}
+@media (prefers-reduced-motion:reduce){.ticker-track{animation:none;}}
 </style>
   <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
 </head>

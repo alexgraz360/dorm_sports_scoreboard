@@ -402,7 +402,7 @@ def build_ticker(league: str) -> dict:
 
     try:
         news = _fetch_json(NEWS_URL.format(path=cfg["path"]))
-        for article in (_get(news, "articles", default=[]) or [])[:6]:
+        for article in (_get(news, "articles", default=[]) or [])[:3]:
             headline = article.get("headline") or article.get("description")
             if headline:
                 items.append({
@@ -490,7 +490,7 @@ def build_all_ticker(leagues=None) -> dict:
                   file=sys.stderr, flush=True)
             continue
         bucket = []
-        for article in (_get(news, "articles", default=[]) or [])[:6]:
+        for article in (_get(news, "articles", default=[]) or [])[:3]:
             headline = (article.get("headline") or article.get("description") or "").strip()
             if not headline:
                 continue
@@ -536,5 +536,5 @@ def build_all_ticker(leagues=None) -> dict:
         "league": "THE WIRE",
         "generatedAt": datetime.now(EASTERN).isoformat(),
         "source": "ESPN newsroom",
-        "items": (leads + items)[:30],
+        "items": (leads + items)[:14],
     }

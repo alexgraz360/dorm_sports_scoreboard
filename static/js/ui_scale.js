@@ -66,6 +66,24 @@
   if (initial == null) initial = autoScale();
   apply(initial);
 
+
+  /* ---- ticker pacing ------------------------------------------------
+     The crawl used a FIXED 95s duration, so its speed depended on how much
+     content was loaded: more headlines = a wider track = faster scroll. Set
+     the duration from the measured track width instead, for a constant,
+     readable speed on any screen. Speed is tied to viewport width so it
+     reads the same on a 1080p monitor and a 4K TV.                     */
+  window.tuneTicker = function (sel) {
+    var track = document.querySelector(sel || "#ticker-track");
+    if (!track) return;
+    var half = track.scrollWidth / 2;            // content is duplicated twice
+    if (!half || !isFinite(half)) return;
+    var secondsPerScreen = 34;                   // a full screen-width takes ~34s
+    var pxPerSecond = (window.innerWidth || 1920) / secondsPerScreen;
+    var duration = Math.max(40, Math.min(600, half / pxPerSecond));
+    track.style.animationDuration = duration.toFixed(1) + "s";
+  };
+
   window.uiScale = function () { return window.__uiScale || 1; };
 
   // Bigger text means fewer tiles fit on screen. Boards call this to thin the

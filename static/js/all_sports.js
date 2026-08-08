@@ -149,6 +149,7 @@ function renderTicker(feed) {
       }).join("")
     : `<span class="ticker-item" data-label="WIRE">Wire warming up…</span>`;
   el("#ticker-track").innerHTML = `<span>${rendered}</span><span aria-hidden="true">${rendered}</span>`;
+  if (window.tuneTicker) window.tuneTicker("#ticker-track");
 }
 
 /* ---------------- counters + clock ---------------- */

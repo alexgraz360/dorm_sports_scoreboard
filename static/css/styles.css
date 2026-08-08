@@ -438,3 +438,11 @@ h1, p { margin: 0; }
 @media (max-width: 1100px) {
   .games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* --- ticker performance (Pi 4 @ 4K): keep the crawl on its own GPU layer so
+   it does not repaint the CRT overlay/glow every frame --- */
+.ticker{contain:layout paint style;}
+.ticker-window{contain:layout paint;}
+.ticker-track{will-change:transform;transform:translateZ(0);backface-visibility:hidden;}
+.ticker-item{text-shadow:none;}
+@media (prefers-reduced-motion:reduce){.ticker-track{animation:none;}}

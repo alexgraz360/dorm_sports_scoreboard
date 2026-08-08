@@ -122,6 +122,7 @@ function renderTicker(feed) {
     : `<span class="ticker-item" data-label="${LEAGUE.toUpperCase()}">Wire warming up…</span>`;
   el("#ticker").className = `ticker ${mode}`;
   el("#ticker-track").innerHTML = `<span>${rendered}</span><span aria-hidden="true">${rendered}</span>`;
+  if (window.tuneTicker) window.tuneTicker("#ticker-track");
 }
 
 /* ---------------- fantasy rail + wire + TD animation ---------------- */

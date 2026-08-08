@@ -221,6 +221,7 @@ function renderTickerFeed(feed) {
     : `<span class="ticker-item" data-label="WIRE">Ticker feed warming up…</span>`;
   els.tickerWrap.className = `ticker ${mode}`;
   els.ticker.innerHTML = `<span>${rendered}</span><span aria-hidden="true">${rendered}</span>`;
+  if (window.tuneTicker) window.tuneTicker("#ticker-track");
 }
 
 /* ---------------- data loading ---------------- */
