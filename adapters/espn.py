@@ -9,6 +9,7 @@ multi-sport extensions: sport, per-team accent/fav/rank, detail, situation.
 
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -20,7 +21,11 @@ EASTERN = ZoneInfo("America/New_York")
 SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard"
 NEWS_URL = "https://site.api.espn.com/apis/site/v2/sports/{path}/news"
 REQUEST_TIMEOUT = 8
-USER_AGENT = "DormWire/1.0 (+scoreboard)"
+# NOTE: do NOT send a custom User-Agent to ESPN. Its edge/WAF 403s unrecognised
+# agents (both "DormWire/1.0" and spoofed browser strings were rejected), while
+# the plain python-requests default is served normally. Sending no UA override
+# is what keeps these endpoints working.
+USER_AGENT = None
 
 _ORDINAL = {1: "1ST", 2: "2ND", 3: "3RD", 4: "4TH"}
 
@@ -297,10 +302,10 @@ def _map_event(league: str, family: str, event: dict) -> dict | None:
 
 
 def _fetch_json(url: str, params: dict | None = None) -> dict:
-    resp = requests.get(
-        url, params=params, timeout=REQUEST_TIMEOUT,
-        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
-    )
+    headers = {"Accept": "application/json"}
+    if USER_AGENT:
+        headers["User-Agent"] = USER_AGENT
+    resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT, headers=headers)
     resp.raise_for_status()
     return resp.json()
 
@@ -429,7 +434,11 @@ def build_all_today(leagues=None) -> dict:
             continue
         try:
             games = fetch_games(league)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            # Log and skip: one bad league must not blank the whole board. This
+            # is logged (not silent) so an upstream block shows up in the
+            # service journal instead of looking like "no games today".
+            print(f"[dorm-wire] ESPN fetch failed for {league}: {exc}", file=sys.stderr, flush=True)
             continue
         if games:
             sports_with_games.append(league)
