@@ -31,13 +31,15 @@
 
   // Auto default: bigger panels/resolutions get a bigger multiplier so text
   // does not shrink into the caps. Tuned for a TV viewed across a room.
+  // Tile text is sized in container units (cqh), so it ALREADY scales with the
+  // panel: a 4K tile is bigger, so its text is bigger. Multiplying again by
+  // resolution double-scales and overflows (this happened on a 65" 4K TV at
+  // 1.9). Default to 1.0 everywhere and keep --s purely as a taste knob;
+  // only nudge up on genuinely small panels where tiles get cramped.
   function autoScale() {
     var w = window.innerWidth || 1920;
-    if (w >= 3200) return 1.9;   // 4K panel
-    if (w >= 2400) return 1.5;   // 1440p+
-    if (w >= 1800) return 1.35;  // 1080p TV (the dorm case)
-    if (w >= 1400) return 1.15;
-    return 1.0;                  // small monitor / laptop
+    if (w < 1200) return 1.1;
+    return 1.0;
   }
 
   function stored() {

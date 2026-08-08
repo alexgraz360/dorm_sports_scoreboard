@@ -156,8 +156,14 @@ def sport_ticker(sport: str):
 @sports_bp.route("/board")
 def board():
     """Redirect the kiosk to whichever board should show right now.
-    The Pi points its browser here; it always lands on the right board."""
-    return redirect(BOARD_URLS.get(_current_board(), "/all"))
+    The Pi points its browser here; it always lands on the right board.
+    Query args are carried through so ?scale=1.2 (the per-TV text-size knob)
+    survives the redirect instead of being dropped."""
+    target = BOARD_URLS.get(_current_board(), "/all")
+    if request.query_string:
+        sep = "&" if "?" in target else "?"
+        target = f"{target}{sep}{request.query_string.decode('utf-8', 'ignore')}"
+    return redirect(target)
 
 
 @sports_bp.route("/api/board")
