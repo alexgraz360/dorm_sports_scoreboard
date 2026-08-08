@@ -94,19 +94,19 @@ h1, p { margin: 0; }
   background: #05030f;
   color: var(--cyan);
   font-family: var(--pixel);
-  font-size: clamp(13px, 1.2vw, 20px);
+  font-size:clamp(calc(13px * var(--s)),calc(1.2vw * var(--s)),calc(20px * var(--s)));
   text-shadow: 0 0 10px var(--cyan);
 }
 .brand-text h1 {
   font-family: var(--pixel);
-  font-size: clamp(16px, 1.9vw, 34px);
+  font-size:clamp(calc(16px * var(--s)),calc(1.9vw * var(--s)),calc(34px * var(--s)));
   color: var(--ink);
   text-shadow: 0 0 12px rgba(35, 240, 255, 0.6);
   letter-spacing: 1px;
 }
 .brand-text p {
   font-family: var(--pixel);
-  font-size: clamp(7px, 0.72vw, 11px);
+  font-size:clamp(calc(7px * var(--s)),calc(0.72vw * var(--s)),calc(11px * var(--s)));
   color: var(--magenta);
   text-shadow: 0 0 8px var(--magenta);
   margin-top: 0.7vh;
@@ -116,7 +116,7 @@ h1, p { margin: 0; }
   display: block;
   margin-top: 0.5vh;
   color: var(--dim);
-  font-size: clamp(13px, 1vw, 18px);
+  font-size:clamp(calc(13px * var(--s)),calc(1vw * var(--s)),calc(18px * var(--s)));
   letter-spacing: 2px;
 }
 
@@ -131,12 +131,12 @@ h1, p { margin: 0; }
 }
 .counters span {
   font-family: var(--pixel);
-  font-size: clamp(6px, 0.62vw, 9px);
+  font-size:clamp(calc(6px * var(--s)),calc(0.62vw * var(--s)),calc(9px * var(--s)));
   color: var(--dim);
   letter-spacing: 1px;
 }
 .counters strong {
-  font-size: clamp(26px, 2.6vw, 50px);
+  font-size:clamp(calc(26px * var(--s)),calc(2.6vw * var(--s)),calc(50px * var(--s)));
   font-weight: 400;
   line-height: 0.9;
   color: var(--amber);
@@ -145,7 +145,7 @@ h1, p { margin: 0; }
 
 .clock-block { display: flex; flex-direction: column; align-items: flex-end; }
 .clock-block time {
-  font-size: clamp(30px, 3.2vw, 62px);
+  font-size:clamp(calc(30px * var(--s)),calc(3.2vw * var(--s)),calc(62px * var(--s)));
   line-height: 0.9;
   color: var(--cyan);
   text-shadow: 0 0 14px rgba(35, 240, 255, 0.6);
@@ -153,7 +153,7 @@ h1, p { margin: 0; }
 .clock-block span {
   margin-top: 0.5vh;
   font-family: var(--pixel);
-  font-size: clamp(6px, 0.62vw, 9px);
+  font-size:clamp(calc(6px * var(--s)),calc(0.62vw * var(--s)),calc(9px * var(--s)));
   color: var(--dim);
   letter-spacing: 1px;
 }
@@ -172,7 +172,7 @@ h1, p { margin: 0; }
 }
 .board-meta span {
   font-family: var(--pixel);
-  font-size: clamp(7px, 0.78vw, 12px);
+  font-size:clamp(calc(7px * var(--s)),calc(0.78vw * var(--s)),calc(12px * var(--s)));
   letter-spacing: 1px;
 }
 .board-meta span:first-child { color: var(--cyan); }
@@ -190,6 +190,7 @@ h1, p { margin: 0; }
 /* ---------------- TILE ---------------- */
 .tile {
   --team: var(--cyan);
+  container-type: size;
   position: relative;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
@@ -227,7 +228,7 @@ h1, p { margin: 0; }
 .tile-top { grid-row: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.4vw; }
 .badge {
   font-family: var(--pixel);
-  font-size: clamp(6px, 0.62vw, 10px);
+  font-size:clamp(7px,calc(6.5cqh * var(--s)),26px);
   color: var(--dim);
   letter-spacing: 1px;
   white-space: nowrap;
@@ -236,7 +237,7 @@ h1, p { margin: 0; }
 .scheduled .badge { color: var(--amber); }
 .featured .badge { color: var(--amber); text-shadow: 0 0 8px var(--amber); }
 .tile-top .detail {
-  font-size: clamp(15px, 1.4vw, 28px);
+  font-size:clamp(12px,calc(13cqh * var(--s)),72px);
   color: var(--amber);
   text-shadow: 0 0 9px rgba(255, 210, 58, 0.4);
   white-space: nowrap;
@@ -245,7 +246,7 @@ h1, p { margin: 0; }
 .focus-reasons { grid-row: 2; display: flex; flex-wrap: wrap; gap: 0.4vw; margin-top: 0.6vh; }
 .focus-reasons span {
   font-family: var(--pixel);
-  font-size: clamp(6px, 0.6vw, 9px);
+  font-size:clamp(calc(6px * var(--s)),calc(0.6vw * var(--s)),calc(9px * var(--s)));
   color: var(--ink);
   letter-spacing: 0.5px;
   border: 1px solid var(--team);
@@ -271,7 +272,7 @@ h1, p { margin: 0; }
   object-fit: contain;
 }
 .code {
-  font-size: clamp(24px, 2.1vw, 44px);
+  font-size:clamp(16px,calc(24cqh * var(--s)),190px);
   line-height: 1;
   color: var(--ink);
   text-shadow: 0 0 8px color-mix(in srgb, var(--team) 60%, transparent);
@@ -282,34 +283,34 @@ h1, p { margin: 0; }
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--pixel);
-  font-size: clamp(6px, 0.6vw, 10px);
+  font-size:clamp(7px,calc(5.5cqh * var(--s)),26px);
   color: var(--dim);
   letter-spacing: 0.5px;
 }
 .score {
-  font-size: clamp(28px, 2.5vw, 52px);
+  font-size:clamp(18px,calc(26cqh * var(--s)),210px);
   line-height: 0.9;
   color: var(--ink);
   text-align: right;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
-.featured .code { font-size: clamp(40px, 4.2vw, 84px); }
-.featured .score { font-size: clamp(44px, 4.6vw, 90px); }
-.featured .name { font-size: clamp(9px, 0.85vw, 15px); }
+.featured .code { font-size:clamp(calc(40px * var(--s)),calc(4.2vw * var(--s)),calc(84px * var(--s))); }
+.featured .score { font-size:clamp(calc(44px * var(--s)),calc(4.6vw * var(--s)),calc(90px * var(--s))); }
+.featured .name { font-size:clamp(calc(9px * var(--s)),calc(0.85vw * var(--s)),calc(15px * var(--s))); }
 
 /* Compact tiles: keep content inside the tile when the slate is large
    (a full MLB day packs 14 compact tiles into up to 5 grid rows, so each
    tile is short). Featured tile keeps its full-size type above. */
 .tile:not(.featured) { padding: clamp(4px, 0.5vw, 10px); }
-.tile:not(.featured) .tile-top .detail { font-size: clamp(12px, 1.15vw, 22px); }
-.tile:not(.featured) .code { font-size: clamp(14px, 1.3vw, 26px); }
-.tile:not(.featured) .score { font-size: clamp(16px, 1.45vw, 30px); }
-.tile:not(.featured) .name { font-size: clamp(6px, 0.55vw, 9px); }
+.tile:not(.featured) .tile-top .detail { font-size:clamp(calc(12px * var(--s)),calc(1.15vw * var(--s)),calc(22px * var(--s))); }
+.tile:not(.featured) .code { font-size:clamp(calc(14px * var(--s)),calc(1.3vw * var(--s)),calc(26px * var(--s))); }
+.tile:not(.featured) .score { font-size:clamp(calc(16px * var(--s)),calc(1.45vw * var(--s)),calc(30px * var(--s))); }
+.tile:not(.featured) .name { font-size:clamp(calc(6px * var(--s)),calc(0.55vw * var(--s)),calc(9px * var(--s))); }
 .tile:not(.featured) .rows { gap: 0.25vh; }
 .tile:not(.featured) .trow { gap: 0.4vw; }
 .tile:not(.featured) .trow img { width: clamp(15px, 1.2vw, 24px); height: clamp(15px, 1.2vw, 24px); }
 .tile:not(.featured) .tile-foot { padding-top: 0.35vh; margin-top: 0.3vh; }
-.tile:not(.featured) .count { font-size: clamp(10px, 0.9vw, 16px); }
+.tile:not(.featured) .count { font-size:clamp(calc(10px * var(--s)),calc(0.9vw * var(--s)),calc(16px * var(--s))); }
 /* Bases only matter for a live game; drop the empty diamond otherwise. */
 .tile:not(.featured):not(.live) .diamond { display: none; }
 /* Smaller diamond for live compact tiles. */
@@ -330,7 +331,7 @@ h1, p { margin: 0; }
   margin-top: 0.4vh;
 }
 .count {
-  font-size: clamp(14px, 1.15vw, 22px);
+  font-size:clamp(10px,calc(10cqh * var(--s)),50px);
   color: var(--dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -363,7 +364,7 @@ h1, p { margin: 0; }
 }
 .tile.empty p, .tile.skeleton span {
   font-family: var(--pixel);
-  font-size: clamp(10px, 1vw, 16px);
+  font-size:clamp(calc(10px * var(--s)),calc(1vw * var(--s)),calc(16px * var(--s)));
   color: var(--dim);
 }
 
@@ -390,7 +391,7 @@ h1, p { margin: 0; }
   background: var(--magenta);
   color: #06030d;
   font-family: var(--pixel);
-  font-size: clamp(14px, 1.5vw, 26px);
+  font-size:clamp(calc(14px * var(--s)),calc(1.5vw * var(--s)),calc(26px * var(--s)));
   box-shadow: 0 0 20px rgba(255, 47, 185, 0.5);
 }
 .pressure-mode .ticker-league { background: var(--amber); }
@@ -405,7 +406,7 @@ h1, p { margin: 0; }
   display: inline-flex;
   align-items: center;
   margin-right: 3vw;
-  font-size: clamp(18px, 1.7vw, 32px);
+  font-size:clamp(calc(18px * var(--s)),calc(1.7vw * var(--s)),calc(32px * var(--s)));
   color: var(--ink);
 }
 .ticker-item::before {
