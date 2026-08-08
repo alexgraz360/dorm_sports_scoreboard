@@ -211,17 +211,8 @@ function renderTickerFeed(feed) {
   const mode = lead.includes("breaking")
     ? "breaking-mode"
     : items.some((i) => (i.category || "").includes("pressure")) ? "pressure-mode" : "headline-mode";
-  const rendered = items.length
-    ? items.map((item) => {
-        const cls = tickerCategoryClass(item.category || "");
-        const label = escapeHtml(tickerLabel(item.category || ""));
-        const source = escapeHtml(item.source || "");
-        return `<span class="ticker-item ${cls}" data-label="${label}" title="${source}">${escapeHtml(item.text)}${source ? `<small>${source}</small>` : ""}</span>`;
-      }).join("")
-    : `<span class="ticker-item" data-label="WIRE">Ticker feed warming up…</span>`;
   els.tickerWrap.className = `ticker ${mode}`;
-  els.ticker.innerHTML = `<span>${rendered}</span><span aria-hidden="true">${rendered}</span>`;
-  if (window.tuneTicker) window.tuneTicker("#ticker-track");
+  if (window.setWire) window.setWire(items);
 }
 
 /* ---------------- data loading ---------------- */

@@ -84,6 +84,57 @@
     track.style.animationDuration = duration.toFixed(1) + "s";
   };
 
+
+  /* ---- THE WIRE: static headline rotator --------------------------------
+     Replaces the scrolling crawl. One headline sits still for HOLD_MS, then
+     cross-fades to the next. Nothing moves while you read, so a Pi 4 at 4K
+     stays smooth (the GPU only works during the ~400ms fade).            */
+  var WIRE_HOLD_MS = 8000;
+  function _wireEsc(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+  var _wireItems = [], _wireIdx = 0, _wireTimer = null;
+
+  function _wireRender(fadeFirst) {
+    var track = document.querySelector("#ticker-track");
+    if (!track || !_wireItems.length) return;
+    var it = _wireItems[_wireIdx % _wireItems.length];
+    var slide = track.querySelector(".wire-slide");
+    var paint = function () {
+      var hot = (it.category || "") === "hot";
+      var badge = (it.source || "WIRE").toUpperCase();
+      var dots = _wireItems.map(function (_, i) {
+        return '<i class="' + (i === _wireIdx % _wireItems.length ? "on" : "") + '"></i>';
+      }).join("");
+      track.innerHTML =
+        '<div class="wire-slide">'
+        + '<span class="wire-badge ' + (hot ? "hot" : "") + '">' + _wireEsc(badge) + "</span>"
+        + '<span class="wire-text">' + _wireEsc(it.text) + "</span>"
+        + '<span class="wire-dots">' + dots + "</span>"
+        + "</div>";
+    };
+    if (fadeFirst && slide) {
+      slide.classList.add("fade");
+      setTimeout(paint, 380);
+    } else {
+      paint();
+    }
+  }
+
+  window.setWire = function (items) {
+    _wireItems = (items || []).filter(function (i) { return i && i.text; });
+    _wireIdx = 0;
+    clearInterval(_wireTimer);
+    if (!_wireItems.length) return;
+    _wireRender(false);
+    _wireTimer = setInterval(function () {
+      _wireIdx = (_wireIdx + 1) % _wireItems.length;
+      _wireRender(true);
+    }, WIRE_HOLD_MS);
+  };
+
   window.uiScale = function () { return window.__uiScale || 1; };
 
   // Bigger text means fewer tiles fit on screen. Boards call this to thin the

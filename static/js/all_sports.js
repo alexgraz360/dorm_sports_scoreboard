@@ -140,16 +140,7 @@ function renderSidebar() {
 /* ---------------- ticker ---------------- */
 function renderTicker(feed) {
   const items = feed.items || [];
-  const rendered = items.length
-    ? items.map((i) => {
-        const cls = (i.category || "") === "hot" ? "hot" : "";
-        const lab = (i.category || "") === "hot" ? "HOT" : "WIRE";
-        return `<span class="ticker-item ${cls}" data-label="${lab}">${esc(i.text)}`
-          + (i.source ? `<small>${esc(i.source)}</small>` : "") + `</span>`;
-      }).join("")
-    : `<span class="ticker-item" data-label="WIRE">Wire warming up…</span>`;
-  el("#ticker-track").innerHTML = `<span>${rendered}</span><span aria-hidden="true">${rendered}</span>`;
-  if (window.tuneTicker) window.tuneTicker("#ticker-track");
+  if (window.setWire) window.setWire(items);
 }
 
 /* ---------------- counters + clock ---------------- */

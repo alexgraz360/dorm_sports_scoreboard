@@ -446,3 +446,24 @@ h1, p { margin: 0; }
 .ticker-track{will-change:transform;transform:translateZ(0);backface-visibility:hidden;}
 .ticker-item{text-shadow:none;}
 @media (prefers-reduced-motion:reduce){.ticker-track{animation:none;}}
+
+/* --- THE WIRE: static headline rotator (no scrolling) ------------------
+   A moving crawl cannot composite smoothly on a Pi 4 at 4K and is hard to
+   read anyway. One headline sits still, then cross-fades to the next: the
+   GPU only works during the ~400ms fade, and the text is stationary while
+   you read it. --- */
+.ticker-track{animation:none !important;transform:none !important;width:100% !important;
+  display:flex !important;align-items:center;}
+.wire-slide{display:flex;align-items:center;gap:1.2vw;width:100%;min-width:0;
+  opacity:1;transition:opacity .38s ease;}
+.wire-slide.fade{opacity:0;}
+.wire-badge{flex:0 0 auto;font-family:var(--pixel,"Press Start 2P",monospace);
+  color:#06030d;background:var(--cyan,#23f0ff);padding:.5em .7em;
+  font-size:clamp(9px,calc(1.7vh * var(--s)),34px);letter-spacing:1px;}
+.wire-badge.hot{background:var(--amber,#ffd23a);}
+.wire-text{flex:1 1 auto;min-width:0;color:var(--ink,#f4f6ff);
+  font-size:clamp(16px,calc(4.6vh * var(--s)),104px);line-height:1.1;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.wire-dots{flex:0 0 auto;display:flex;gap:6px;}
+.wire-dots i{width:7px;height:7px;background:rgba(255,255,255,.25);display:block;}
+.wire-dots i.on{background:var(--amber,#ffd23a);box-shadow:0 0 8px var(--amber,#ffd23a);}

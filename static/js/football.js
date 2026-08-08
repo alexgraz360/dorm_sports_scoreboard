@@ -111,18 +111,8 @@ function renderTicker(feed) {
   const lead = (items[0] && items[0].category) || "";
   const mode = lead.includes("breaking") ? "breaking-mode"
     : items.some((i) => (i.category || "").includes("pressure")) ? "pressure-mode" : "headline-mode";
-  const rendered = items.length
-    ? items.map((i) => {
-        const cat = i.category || "";
-        const cls = cat.includes("breaking") ? "breaking" : cat.includes("pressure") ? "pressure" : "news";
-        const lab = cat.includes("breaking") ? "BREAKING" : cat.includes("pressure") ? "PRESSURE" : LEAGUE.toUpperCase();
-        return `<span class="ticker-item ${cls}" data-label="${lab}">${esc(i.text)}`
-          + (i.source ? `<small>${esc(i.source)}</small>` : "") + `</span>`;
-      }).join("")
-    : `<span class="ticker-item" data-label="${LEAGUE.toUpperCase()}">Wire warming up…</span>`;
   el("#ticker").className = `ticker ${mode}`;
-  el("#ticker-track").innerHTML = `<span>${rendered}</span><span aria-hidden="true">${rendered}</span>`;
-  if (window.tuneTicker) window.tuneTicker("#ticker-track");
+  if (window.setWire) window.setWire(items);
 }
 
 /* ---------------- fantasy rail + wire + TD animation ---------------- */
