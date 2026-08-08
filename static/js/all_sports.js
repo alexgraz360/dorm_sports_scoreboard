@@ -83,7 +83,7 @@ function tile(g, featured) {
     ? reasons + `<div class="rows">${teamRow(g, g.away, true)}${teamRow(g, g.home, true)}</div>`
       + vizHTML(g) + wpHTML(g) + leadersHTML(g, true)
     : `<div class="rows">${teamRow(g, g.away, false)}${teamRow(g, g.home, false)}</div>`
-      + leadersHTML(g, false);
+      + vizHTML(g) + leadersHTML(g, false);
   const detail = esc(g.detail || "");
   const foot = featured
     ? `<div class="tile-foot"><span class="count">${esc(g.sport.toUpperCase())} · ${detail}</span>${flag}</div>`
