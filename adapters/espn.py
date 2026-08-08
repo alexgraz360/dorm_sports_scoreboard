@@ -89,6 +89,10 @@ def _build_detail(family: str, status: dict, comp: dict) -> str:
         return _format_start_time(_get(comp, "date", default=""))
 
     # live
+    if family == "baseball":
+        # Baseball has innings, not clock periods — ESPN's shortDetail is
+        # already the right string ("Top 6th", "Bot 4th", "Mid 2nd").
+        return (_get(status, "type", "shortDetail", default="") or "LIVE").upper()
     if family == "soccer":
         # ESPN gives the minute in displayClock (e.g. "68'").
         return clock.strip() or "LIVE"
