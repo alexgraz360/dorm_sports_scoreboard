@@ -28,7 +28,7 @@ cat > "$AUTOSTART_FILE" <<EOF
 # Dorm Sports Wire kiosk autostart
 # Used by current Raspberry Pi OS Desktop with labwc.
 sleep 12
-$CHROMIUM_CMD --kiosk --noerrdialogs --disable-infobars --no-first-run --start-maximized http://127.0.0.1:5000/board &
+$CHROMIUM_CMD --kiosk --password-store=basic --noerrdialogs --disable-infobars --no-first-run --start-maximized http://127.0.0.1:5000/board &
 EOF
 
 echo
