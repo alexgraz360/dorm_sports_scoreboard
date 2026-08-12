@@ -65,9 +65,9 @@ h1,p{margin:0;}
 .focus-reasons{display:flex;flex-wrap:wrap;gap:.4vw;}
 .focus-reasons span{font-family:var(--pixel);font-size:clamp(7px,calc(5cqh * var(--s)),24px);color:var(--ink);border:1px solid var(--team);background:color-mix(in srgb,var(--team) 18%,transparent);padding:.4vh .4vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 
-.rows{display:grid;gap:.3vh;flex:1 1 auto;align-content:center;min-height:0;overflow:hidden;}
+.rows{display:grid;gap:.3vh;flex:1 1 auto;align-content:center;min-height:min-content;}
 .featured .rows{margin:.3vh 0;}
-.trow{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:.45vw;min-width:0;}
+.trow{min-height:1em;display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:.45vw;min-width:0;}
 .star{color:var(--amber);font-size:clamp(9px,calc(9cqh * var(--s)),40px);text-shadow:0 0 8px var(--amber);width:1ch;}
 .star.off{opacity:0;}
 .code{font-size:clamp(16px,calc(19cqh * var(--s)),150px);line-height:1;color:var(--ink);text-shadow:0 0 8px color-mix(in srgb,var(--team) 60%,transparent);}
@@ -172,6 +172,18 @@ h1,p{margin:0;}
 .wire-dots{flex:0 0 auto;display:flex;gap:6px;}
 .wire-dots i{width:7px;height:7px;background:rgba(255,255,255,.25);display:block;}
 .wire-dots i.on{background:var(--amber,#ffd23a);box-shadow:0 0 8px var(--amber,#ffd23a);}
+
+/* --- Fallback for engines without usable container-query units (e.g. WPE
+   WebKit on the Pi Zero build). Chromium keeps the cqh sizing above. --- */
+@supports not (font-size: 1cqh) {
+  .code{font-size:clamp(18px,calc(1.9vw * var(--s)),44px);}
+  .score{font-size:clamp(20px,calc(2.1vw * var(--s)),50px);}
+  .featured .code{font-size:clamp(30px,calc(3.1vw * var(--s)),70px);}
+  .featured .score{font-size:clamp(32px,calc(3.3vw * var(--s)),76px);}
+  .detail{font-size:clamp(13px,calc(1.3vw * var(--s)),26px);}
+  .leaders,.count{font-size:clamp(11px,calc(1vw * var(--s)),20px);}
+  .name{font-size:clamp(7px,calc(.6vw * var(--s)),12px);}
+}
 </style>
   <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
 </head>
