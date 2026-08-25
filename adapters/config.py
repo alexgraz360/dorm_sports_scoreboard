@@ -42,10 +42,10 @@ load_env()
 FAVORITES: dict[str, dict[str, list[str]]] = {
     "mlb": {"Alex": ["NYY"]},
     "nba": {"Alex": ["NYK"]},
-    "nfl": {"Alex": ["NYG"], "Jordan": ["DEN"]},
-    "cfb": {"Alex": ["UGA", "DUKE"], "Jordan": ["OSU"]},
-    "nhl": {"Alex": ["NYR"], "Jordan": ["NJD"]},
-    "epl": {"Jordan": ["MANU"]},  # Manchester United
+    "nfl": {"Alex": ["NYG"], "Nolan": ["DEN"]},
+    "cfb": {"Alex": ["UGA", "DUKE"], "Nolan": ["OSU"]},
+    "nhl": {"Alex": ["NYR"], "Nolan": ["NJD"]},
+    "epl": {"Nolan": ["MANU"]},  # Manchester United
     "cbb": {"Alex": ["DUKE"]},
 }
 

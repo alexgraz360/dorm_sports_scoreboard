@@ -114,7 +114,7 @@ async function load() {
     $("dateline").textContent = d.dateline || $("dateline").textContent;
     renderQuote(d.quote);
     renderSched($("sched-alex"), (d.schedules || {}).alex);
-    renderSched($("sched-jordan"), (d.schedules || {}).jordan);
+    renderSched($("sched-nolan"), (d.schedules || {}).nolan);
     renderWeather(d.weather);
     renderRail();
     renderNews(d.news);

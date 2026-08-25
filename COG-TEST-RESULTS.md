@@ -1,7 +1,8 @@
 # P1 — cog / WebKit render + memory test on the dorm Pi 4
 
 Run: 2026-08-11, over SSH against the live dorm Pi (Raspberry Pi 4 Model B Rev 1.5, 2GB).
-Read-mostly. The live display was never interrupted (verified, see §8).
+Two passes: an initial test that found a rendering bug, then a **re-test after fixing it at true
+1920×1080**. The live display was never interrupted (verified, §8).
 
 ## 1. Browser used
 
@@ -9,128 +10,130 @@ Read-mostly. The live display was never interrupted (verified, see §8).
 |---|---|
 | Browser | **cog 0.18.4** (the real target, no fallback needed) |
 | Engine | **WPE WebKit 2.48.3** |
-| Extra packages added | `xvfb`, `x11-utils`, `imagemagick`, `cog`, `grim`, `libwpebackend-fdo-1.0-1` |
-| Packages removed/changed | **none** (additive only, no upgrades) |
+| Packages added | `xvfb`, `x11-utils`, `imagemagick`, `cog`, `grim`, `libwpebackend-fdo-1.0-1` |
+| Packages removed/changed | **none** (additive only, no upgrades, no reboot) |
 
-Two setup notes worth recording for the product build:
+Setup findings worth keeping for the product build:
 
-- **`cog` has no X11 backend on Debian 13** — only `drm`, `headless`, and `wl` (Wayland). So the
-  Xvfb approach in the brief cannot drive it. I ran a second, headless **wlroots compositor**
-  (`labwc` with `WLR_BACKENDS=headless`) on its own socket `wayland-1`. The TV's real compositor
-  is `wayland-0` and was never touched.
-- `cog` also needs **`libwpebackend-fdo`**, which is not pulled in automatically. Without it cog
-  aborts with `libWPEBackend-default.so: cannot open shared object file`.
+- **`cog` has no X11 backend** on Debian 13 — only `drm`, `headless`, `wl`. Xvfb cannot drive it.
+  I ran a second headless **wlroots** compositor (`labwc`, `WLR_BACKENDS=headless`) on its own
+  socket `wayland-1`; the TV's compositor is `wayland-0` and was never touched.
+- **`libwpebackend-fdo` is required** and is *not* pulled in by the `cog` package. Without it cog
+  aborts: `libWPEBackend-default.so: cannot open shared object file`.
+- `cog` has **no `--fullscreen` flag**; use `COG_PLATFORM_WL_VIEW_FULLSCREEN=1`. Without it cog
+  opens a small window and any memory figure is not a real 1080p measurement.
 
-## 2. Peak memory
+## 2. Peak memory — at TRUE 1920×1080
 
-Measured with `ps` (RSS), three processes, at 1280×720 headless output:
+Verified full-frame (content bounding box measured at 1920×1078 of a 1920×1080 output):
 
 | Process | RSS |
 |---|---|
 | `cog` (UI) | 105 MB |
-| `WPEWebProcess` (renderer) | 192 MB |
+| `WPEWebProcess` (renderer) | 184 MB |
 | `WPENetworkProcess` | 68 MB |
-| **Total** | **357 MB** |
+| **Total** | **355 MB** |
 
-Chromium on the same Pi, for comparison, runs ~10 processes.
-
-⚠️ **Caveat: this is at 720p, not 1080p.** The headless wlroots output defaulted to 1280×720 and
-I did not get it to 1920×1080 within this run. Renderer memory scales with framebuffer/compositing
-surface, so the 1080p figure will be **higher than 357 MB** — I would not assume it stays under
-400 MB at 1080p without re-measuring. This is the single biggest open question in this test.
+Notably, memory barely moved between 720p (357 MB) and 1080p (355 MB) — this workload is
+DOM/JS-bound, not framebuffer-bound. That is a good sign for a cheap board.
 
 ## 3. 400MB cap
 
-**Survived.** `systemd-run --user --scope -p MemoryMax=400M` ran cog for 35s at **351 MB RSS**
-with no OOM kill (`dmesg` clean, no kernel kill message). The segfault line in the log is from
-*my own* `pkill` during cleanup, not a crash under memory pressure.
-
-Again: survived at 720p. Not proven at 1080p.
+**Survived, at true 1080p.** `systemd-run --user --scope -p MemoryMax=400M` ran cog for 35s at
+**352 MB RSS**, no OOM kill, `dmesg` clean. (The segfault in the log is my own `pkill` at cleanup,
+not a crash under pressure.)
 
 ## 4. CPU load
 
-~**19–21% user, 3% sys, 76–78% idle** on the Pi 4 while rendering — and that is *on top of* the
-live Chromium kiosk already running. CPU is not the constraint.
+**~24% user, ~69% idle** on the Pi 4 at 1080p — *while the live Chromium kiosk was also running*.
+CPU is not the constraint.
 
-## 5. Rendering errors / missing content
+## 5. Rendering — first pass FAILED, fix applied, second pass PASSES
 
-**This is where it fails.** See §7.
+**First pass (commit `ca10929`): compact tiles lost their team codes and scores entirely.** League
+chip, inning, bases and flag rendered, but `HOU 1 · SF 4` was simply absent — fatal for a
+scoreboard.
 
-- The **team abbreviations and scores are missing from the compact game tiles.** The tiles render
-  their league chip, the inning/detail, the bases diamond, and the flag pill — but the actual
-  `HOU 1 · SF 4` line is absent. That is the single most important content on the board.
-- On the **featured tile** the codes *do* appear (`MIL Brewers 1` / `TEX Rangers 2`) but render
-  dim and undersized versus Chromium.
-- The **LEADERS line is clipped** mid-sentence (`Campusano 2-3, HR, 3 RBI, 2 R, BB` cut off).
-- CFB tiles (which have no bases graphic) *do* show their team codes, just dimly.
+**Cause:** `.rows` carried `overflow:hidden`. Under WebKit the size-contained tile's container
+height resolves differently than Blink, the flex row band collapses, and `overflow:hidden` then
+clips the team line away instead of merely overflowing it.
 
-**Everything else renders correctly**: layout, grid, sidebar, neon palette, CRT scanline overlay,
-both webfonts (Press Start 2P + VT323), the favourite-team stars, the flag pills
-(`ONE SCORE` / `RISP` / `TIE GAME`), and the new static headline rotator with its league badge and
-progress dots. No console errors were logged by cog beyond a harmless a11y-bus warning.
+**Fix (commit `9aa45f0`):**
+- dropped `overflow:hidden` from `.rows`, using `min-height:min-content` so the band cannot collapse
+- floored `.trow` at `min-height:1em`
+- added an `@supports not (font-size: 1cqh)` fallback that sizes tile text off the viewport for
+  engines without usable container-query units
+- Chromium regression-checked afterwards: 0 blank team rows, 0 overflow.
 
-**Live data updates fine.** render-01 and render-02 (2 min apart) show a different featured game,
-different sidebar contents, and a different wire headline.
+**Second pass renders correctly.** Confirmed present at 1080p: every compact tile's team codes and
+scores (`HOU 1/SF 4`, `KC 1/LAD 1`, `TEX 2/LAA 3`, `COL 3/ARI 2`, `TB 12/ATH 2`, `SEA 1/NYY 4`),
+favourite-team stars (`★NYY`, `★OSU`, `★UGA`), bases diamonds with the occupied base lit, flag
+pills (`RISP`, `ONE SCORE`), the full ALSO ON sidebar, both webfonts, the neon palette, the CRT
+overlay, HUD counters, and the static headline rotator with league badge + progress dots.
+Live data updates between captures.
 
-### Likely cause (and why it is probably fixable)
+### Remaining cosmetic defects (not blockers)
 
-The tile text was recently changed to size itself in **container-query units** (`cqh`) off a
-`container-type: size` tile, with `.rows { flex:1; overflow:hidden }`. Chromium resolves this fine;
-WebKit appears to resolve the container height differently, so the rows box collapses and
-`overflow:hidden` clips the team line away entirely. The compact tiles that *do* show codes are
-the ones without the bases graphic competing for space — consistent with that theory.
+1. **Team codes render dim.** The codes are drawn in each team's accent colour with a glow via
+   `text-shadow: 0 0 8px color-mix(in srgb, var(--team) 60%, transparent)`. WebKit does not appear
+   to apply that glow, so dark accents (navy, black, brown — MIL, SD, SEA) sit dark-on-dark and are
+   weak from a distance. Fix: brighten dark accents or use a plain-rgba text-shadow fallback.
+2. **The featured tile's LEADERS line is clipped** mid-line.
+3. The featured tile has more dead space under WebKit than under Chromium.
 
-This is a **frontend incompatibility in one recent styling decision**, not evidence that the
-dashboard fundamentally cannot run on WebKit.
+All three are CSS-level and would not block a product build.
 
-## 6. Screenshot paths
+## 6. Screenshot paths (on the Pi)
 
-On the Pi:
-
-- `~/cog-test/render-01.png` — initial render (1280×720)
-- `~/cog-test/render-02.png` — ~2 min later, proves live data updating
-- `~/cog-test/cq.png` — same as render-02
+- `~/cog-test/render-01.png` — first pass, 720p, **shows the missing-scores bug**
+- `~/cog-test/render-02.png` — first pass +2 min, proves live data updating
+- `~/cog-test/render-03-fixed-1080p.png` — after fix, windowed
+- `~/cog-test/render-05.png` — **after fix, true 1920×1080 fullscreen (the definitive one)**
 
 ## 7. Verdict
 
-**Q1 — does it render correctly in WebKit? NO, not as-is.** The board is recognisably itself and
-~90% correct, but the compact tiles lose their scores, which is the core function of a scoreboard.
-Not shippable in this state. Fixable: add a non-`cqh` fallback for tile text sizing (and drop the
-`overflow:hidden` on `.rows`), then re-test.
+**Q1 — renders correctly in WebKit? YES, after a one-line-class CSS fix.** It failed initially,
+the cause was found and fixed, and the re-test shows all critical content present and correct. Two
+cosmetic issues remain (dim team codes, clipped leaders line), both CSS-level.
 
-**Q2 — does it fit in ~400MB? PROVISIONALLY YES.** 357 MB unconstrained, 351 MB under a hard
-400 MB cap, no OOM. But **only proven at 720p** — the 1080p number is unmeasured and will be
-higher.
+**Q2 — fits in ~400MB? YES, and now proven at 1080p.** 355 MB unconstrained, 352 MB under a hard
+400 MB cap, no OOM, and essentially flat between 720p and 1080p.
 
 ## 8. Live display confirmation
 
-- `dorm-sports-wire.service` — **active the entire time**, never stopped, restarted, or edited.
-- TV Chromium kiosk — still running (10 procs), still on `http://127.0.0.1:5000/board?scale=1.0`.
-- TV compositor socket `wayland-0` — present and untouched; all test rendering used `wayland-1`.
-- Project repo — `git status` clean, **no existing file modified**.
+- `dorm-sports-wire.service` — **active throughout**, never stopped, restarted, disabled or edited.
+- The fix was tested via a **separate clone on port 5001**, specifically to avoid restarting the
+  live service. Port 5000 served the whole time (`/all` → 200 at the end).
+- TV Chromium kiosk — still running (11 procs), still on `http://127.0.0.1:5000/board?scale=1.0`.
+- TV compositor `wayland-0` untouched; all rendering used `wayland-1`.
+- Live repo — `git status` clean, **0 files modified**.
 - No reboot, no config file touched, no service edited, no package removed or upgraded.
-- Service count went 27 → 26; the difference is a transient system service (`packagekit`-class,
-  which exits on its own when idle), **not** the display service.
+- All test processes (cog, headless labwc, test Flask, Xvfb) cleaned up; packages left installed.
 
 ## Plain-language summary
 
-**Would this dashboard work on a 512MB board? Not today — but the blocker is the frontend, not
-the memory.**
+**Would this dashboard work on a 512MB board? Yes — on the memory evidence, with a caveat about
+headroom.**
 
-The memory story is genuinely encouraging: WebKit renders this board in ~357 MB where Chromium
-needs roughly triple that, and it held under a hard 400 MB ceiling without being killed. On CPU
-it is comfortable.
+WebKit renders this board in **355 MB at full 1080p**, held under a hard 400 MB ceiling without
+being killed, and used about a quarter of one Pi 4's CPU. Memory was flat from 720p to 1080p,
+which means the cost is the DOM and JS rather than the framebuffer — so a smaller/cheaper board
+should behave similarly.
 
-The blocker is that the compact tiles lose their team names and scores under WebKit, which traces
-to one recent CSS choice (container-query units) rather than anything deep. Fixing that is a
-contained frontend job — likely an hour or two — after which this deserves a proper re-test.
+The rendering blocker found in the first pass was real but shallow: one `overflow:hidden` that
+WebKit and Chromium disagree about. Fixed and re-verified. What is left is cosmetic — the team
+codes need more contrast under WebKit because the glow effect does not apply.
 
-**Two things to settle before betting the BOM on a Zero 2 W:**
+**Honest caveats before you move the BOM to a Zero 2 W:**
 
-1. **Re-measure at 1920×1080.** 357 MB at 720p is not 357 MB at 1080p, and 400 MB is not a lot of
-   headroom. If it lands at 450–500 MB, a 512MB board is too tight to be comfortable regardless of
-   rendering.
-2. **Fix the `cqh` sizing and confirm the scores come back**, then screenshot again.
+1. **355 MB on a 512MB board leaves ~150MB for the OS, compositor and Python backend.** That is
+   workable but not generous. If the Flask backend also runs on the same board, measure the whole
+   stack together, not just the browser.
+2. **This was measured on a Pi 4, not a Zero 2 W.** The Zero 2 W has a slower CPU and much less
+   memory bandwidth; memory should be similar but *responsiveness* (the 8s headline swaps, the
+   focus rotation, the TD animation) is unproven on that silicon.
+3. Fix the two cosmetic issues before shipping — dim team codes are a real legibility problem on a
+   scoreboard viewed from across a room.
 
-So: a promising partial pass, not a green light. Treat it as "worth the frontend fix and a 1080p
-re-run", not as "the Zero 2 W works".
+So: **PASS on both questions**, with the recommendation that the next test is the whole stack
+(backend + browser) on actual Zero 2 W hardware rather than more work on the Pi 4.

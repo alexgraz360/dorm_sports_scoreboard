@@ -122,7 +122,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Barlow Condensed',sans-s
     <div class="left">
       <div class="schedules">
         <div class="card"><div class="ctitle">ALEX · TODAY</div><div id="sched-alex"></div></div>
-        <div class="card"><div class="ctitle">JORDAN · TODAY</div><div id="sched-jordan"></div></div>
+        <div class="card"><div class="ctitle">NOLAN · TODAY</div><div id="sched-nolan"></div></div>
       </div>
       <div class="card wx-card">
         <div class="ctitle" style="color:var(--amber)">WEATHER · TODAY</div>
@@ -152,7 +152,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Barlow Condensed',sans-s
 
 <script>
 const alex=[["9:30a","FIN 301 Corp Finance","214",0],["11:00a","ECON 202 Macro","118",1],["1:30p","ACCT 210 Mgr Acct","305",0],["3:15p","Study / Gym","—",0]];
-const jordan=[["8:00a","STAT 240 Bus Stats","101",0],["10:00a","FIN 320 Investments","214",0],["12:30p","MKTG 200 Marketing","220",1],["2:00p","FIN 301 Corp Finance","214",0]];
+const nolan=[["8:00a","STAT 240 Bus Stats","101",0],["10:00a","FIN 320 Investments","214",0],["12:30p","MKTG 200 Marketing","220",1],["2:00p","FIN 301 Corp Finance","214",0]];
 const hours=[["9A","58°","cloudy"],["12P","68°","sun"],["3P","71°","sun"],["6P","66°","clear"],["9P","60°","clear"]];
 
 const portfolio={total:"$18,432", day:"+$214 (+1.18%)", up:true, rows:[
@@ -217,7 +217,7 @@ const CATNAME={war:"WAR HEROES",phil:"PHILOSOPHY",greek:"ANCIENT GREECE",sport:"
 const $=id=>document.getElementById(id);
 function sched(list){return list.map(r=>`<div class="srow ${r[3]?"now":""}"><span class="st">${r[0]}</span><span class="sc">${r[1]}</span><span class="sr">${r[2]}</span></div>`).join("");}
 $("sched-alex").innerHTML=sched(alex);
-$("sched-jordan").innerHTML=sched(jordan);
+$("sched-nolan").innerHTML=sched(nolan);
 $("wxhours").innerHTML=hours.map(h=>`<div class="wx-hr"><div class="h">${h[0]}</div><div class="t">${h[1]}</div><div class="c">${h[2]}</div></div>`).join("");
 
 // quote of the day: stable per calendar day, spread across the whole bank (no near-repeats)

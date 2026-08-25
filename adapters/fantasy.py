@@ -3,7 +3,7 @@
 The real Sleeper flow (username -> user id -> leagues -> rosters + matchups ->
 live scoring) is implemented here, but the leagues do not exist yet (season is
 far off) and no usernames are configured, so the endpoints fall back to sample
-data. Set SLEEPER_USERNAME_ALEX / SLEEPER_USERNAME_JORDAN (config, not secret)
+data. Set SLEEPER_USERNAME_ALEX / SLEEPER_USERNAME_NOLAN (config, not secret)
 and the rail switches to live automatically.
 
 Shapes returned:
@@ -162,7 +162,7 @@ def build_fantasy_rail() -> dict:
     """
     people_cfg = {
         "Alex": os.getenv("SLEEPER_USERNAME_ALEX"),
-        "Jordan": os.getenv("SLEEPER_USERNAME_JORDAN"),
+        "Nolan": os.getenv("SLEEPER_USERNAME_NOLAN"),
     }
     state = get_nfl_state()
     cur_season = int(state.get("season") or datetime.now(EASTERN).year)
@@ -377,10 +377,10 @@ def _sample_rail() -> dict:
                      {"name": "DK Metcalf", "pos": "FLEX", "points": 4.4},
                      {"name": "SF DST", "pos": "D/ST", "points": 6.0},
                      {"name": "Harrison Butker", "pos": "K", "points": 8.0}]},
-                 "opp": {"name": "Jordan", "points": 88.1}}]},
-            {"person": "Jordan", "leagues": [
+                 "opp": {"name": "Nolan", "points": 88.1}}]},
+            {"person": "Nolan", "leagues": [
                 {"league": "Hurst 11 Dynasty", "week": 1,
-                 "me": {"name": "Jordan", "points": 88.1, "starters": [
+                 "me": {"name": "Nolan", "points": 88.1, "starters": [
                      {"name": "Jalen Hurts", "pos": "QB", "points": 21.3},
                      {"name": "Saquon Barkley", "pos": "RB", "points": 20.8},
                      {"name": "Kyren Williams", "pos": "RB", "points": 9.4},
@@ -405,9 +405,9 @@ def _sample_wire() -> dict:
              "player": "Josh Allen", "source": "live"},
             {"kind": "inj", "text": "Q: Garrett Wilson questionable to return (ankle) — ALEX WR",
              "player": "Garrett Wilson", "source": "injury"},
-            {"kind": "score", "text": "Saquon Barkley now 20.8 pts, leads JORDAN's flex",
+            {"kind": "score", "text": "Saquon Barkley now 20.8 pts, leads NOLAN's flex",
              "player": "Saquon Barkley", "source": "scoring"},
-            {"kind": "inj", "text": "OUT: De'Von Achane (knee) — JORDAN flex",
+            {"kind": "inj", "text": "OUT: De'Von Achane (knee) — NOLAN flex",
              "player": "De'Von Achane", "source": "injury"},
         ],
     }

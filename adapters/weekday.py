@@ -3,7 +3,7 @@
 Free sources per the spec:
   - Weather: Open-Meteo (no key) -> always live.
   - Quote of the day: local verified bank -> always live, deterministic per day.
-  - Schedules: Google Calendar private iCal URLs (GOOGLE_ICAL_URL_ALEX/JORDAN).
+  - Schedules: Google Calendar private iCal URLs (GOOGLE_ICAL_URL_ALEX/NOLAN).
   - Stocks: Finnhub (FINNHUB_API_KEY).
   - Market news: Alpha Vantage NEWS_SENTIMENT (ALPHAVANTAGE_API_KEY).
 
@@ -322,11 +322,11 @@ def _fetch_schedule(url: str, now: datetime) -> list[dict] | None:
 def build_schedules() -> dict:
     now = datetime.now(EASTERN)
     alex = _fetch_schedule(os.getenv("GOOGLE_ICAL_URL_ALEX"), now)
-    jordan = _fetch_schedule(os.getenv("GOOGLE_ICAL_URL_JORDAN"), now)
-    if alex is None and jordan is None:
+    nolan = _fetch_schedule(os.getenv("GOOGLE_ICAL_URL_NOLAN"), now)
+    if alex is None and nolan is None:
         return _sample_schedules()
     return {"demo": False, "source": "Google Calendar",
-            "alex": alex or [], "jordan": jordan or []}
+            "alex": alex or [], "nolan": nolan or []}
 
 
 # ============ Markets (Finnhub quotes; API key) ============
@@ -460,7 +460,7 @@ def _sample_schedules() -> dict:
                      {"time": "11:00a", "title": "ECON 202 Macro", "room": "118", "now": 1},
                      {"time": "1:30p", "title": "ACCT 210 Mgr Acct", "room": "305", "now": 0},
                      {"time": "3:15p", "title": "Study / Gym", "room": "—", "now": 0}],
-            "jordan": [{"time": "8:00a", "title": "STAT 240 Bus Stats", "room": "101", "now": 0},
+            "nolan": [{"time": "8:00a", "title": "STAT 240 Bus Stats", "room": "101", "now": 0},
                        {"time": "10:00a", "title": "FIN 320 Investments", "room": "214", "now": 0},
                        {"time": "12:30p", "title": "MKTG 200 Marketing", "room": "220", "now": 1},
                        {"time": "2:00p", "title": "FIN 301 Corp Finance", "room": "214", "now": 0}]}
