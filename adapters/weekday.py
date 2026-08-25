@@ -257,6 +257,12 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
                 continue
             occurs = start.date() == today or (
                 "rrule" in cur and _recurs_on(start, cur["rrule"], cur["exdates"], today))
+            # Skip generic free/busy placeholders. Synced calendars emit these
+            # (e.g. a recurring 00:00-07:00 "Busy" block) and they carry no
+            # information, so they only crowd out the real schedule.
+            if (cur.get("summary", "").strip().lower() in
+                    ("busy", "(busy)", "free", "tentative")):
+                continue
             if occurs:
                 ap = "a" if start.hour < 12 else "p"
                 h12 = start.hour % 12 or 12
