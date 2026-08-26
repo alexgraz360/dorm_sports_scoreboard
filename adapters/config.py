@@ -146,9 +146,34 @@ def is_favorite(league: str, abbrev: str) -> bool:
     return bool(favorite_people(league, abbrev))
 
 
+# Team codes are drawn in the team's own colour on a near-black tile. Navy,
+# black and dark-brown teams (MIL, SD, BUF, MISS...) come out unreadable from
+# across a room, so lift anything below this relative luminance.
+MIN_ACCENT_LUMA = 0.34
+
+
+def _brighten(hex6: str, min_luma: float = MIN_ACCENT_LUMA) -> str:
+    """Lift a colour toward white until it clears min_luma, keeping its hue."""
+    try:
+        r, g, b = (int(hex6[i:i + 2], 16) for i in (0, 2, 4))
+    except (ValueError, IndexError):
+        return f"#{hex6}"
+    luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+    if luma >= min_luma:
+        return f"#{hex6}"
+    # blend toward white by however much we are short
+    t = min(0.85, (min_luma - luma) / max(min_luma, 0.01))
+    r, g, b = (round(c + (255 - c) * t) for c in (r, g, b))
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
 def accent_for(abbrev: str, feed_color: str | None) -> str:
-    """Prefer the feed-provided team color; fall back to our map, then cyan."""
+    """Prefer the feed-provided team color; fall back to our map, then cyan.
+    Dark colours are brightened so the team code stays legible on a TV."""
     color = (feed_color or "").strip().lstrip("#")
-    if color and len(color) in (3, 6):
-        return f"#{color}"
-    return FALLBACK_ACCENTS.get((abbrev or "").upper(), DEFAULT_ACCENT)
+    if color and len(color) == 3:
+        color = "".join(c * 2 for c in color)
+    if color and len(color) == 6:
+        return _brighten(color.lower())
+    fallback = FALLBACK_ACCENTS.get((abbrev or "").upper(), DEFAULT_ACCENT)
+    return _brighten(fallback.lstrip("#")) if fallback != DEFAULT_ACCENT else fallback

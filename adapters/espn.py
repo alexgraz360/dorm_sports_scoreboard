@@ -103,6 +103,23 @@ def _build_detail(family: str, status: dict, comp: dict) -> str:
     return label or clock or "LIVE"
 
 
+
+def _is_today_et(iso_date: str, now=None) -> bool:
+    """True if this game falls on today's Eastern date.
+
+    ESPN's scoreboard returns the whole current SLATE, not just today: in the
+    offseason that means last week's finals and the next scheduled week (we saw
+    153 games spanning 5 days back to 5 weeks ahead). Compare in Eastern, not
+    UTC, or a 10pm ET game reads as tomorrow.
+    """
+    if not iso_date:
+        return False
+    try:
+        dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00")).astimezone(EASTERN)
+    except (ValueError, TypeError):
+        return False
+    return dt.date() == (now or datetime.now(EASTERN)).date()
+
 def _competitor(comp: dict, home_away: str) -> dict | None:
     for c in _get(comp, "competitors", default=[]) or []:
         if c.get("homeAway") == home_away:
@@ -326,6 +343,10 @@ def fetch_games(league: str) -> list[dict]:
         mapped = _map_event(league, family, event)
         if mapped:
             games.append(mapped)
+    # Keep today's games (Eastern) plus anything still in progress, so a game
+    # that runs past midnight does not vanish mid-inning.
+    today_only = [g for g in games if g["isLive"] or _is_today_et(g.get("gameDate"))]
+    games = today_only
     games.sort(key=lambda g: (not g["isLive"], g["isFinal"], g["sortKey"]))
     return games
 

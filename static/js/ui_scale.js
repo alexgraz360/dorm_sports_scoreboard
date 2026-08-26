@@ -158,6 +158,30 @@
     try { localStorage.setItem(SAFE_KEY, String(v)); } catch(e){}
     applySafe(v); return v; };
 
+
+  /* ---- board watcher ------------------------------------------------------
+     /board is a SERVER-SIDE redirect, so it is evaluated exactly once: at page
+     load. The kiosk resolved it at boot and then sat on that board forever —
+     the day/time mode-switcher never re-fired (observed: still on the sports
+     board at 1pm on a Wednesday, when /api/board correctly said "weekday").
+     Poll the selector and navigate when the target board changes. Query args
+     (scale, safe) are carried across so per-TV tuning survives the switch.  */
+  var BOARD_POLL_MS = 60000;
+  async function boardWatcher() {
+    try {
+      var r = await fetch("/api/board", { cache: "no-store" });
+      if (!r.ok) return;
+      var d = await r.json();
+      var target = d && d.url;
+      if (!target) return;
+      if (target !== window.location.pathname) {
+        window.location.href = target + window.location.search;
+      }
+    } catch (e) { /* offline: stay put and retry next tick */ }
+  }
+  setInterval(boardWatcher, BOARD_POLL_MS);
+  setTimeout(boardWatcher, 5000);   // also check shortly after load
+
   window.uiScale = function () { return window.__uiScale || 1; };
 
   // Bigger text means fewer tiles fit on screen. Boards call this to thin the
