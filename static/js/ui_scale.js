@@ -135,6 +135,29 @@
     }, WIRE_HOLD_MS);
   };
 
+
+  /* ---- overscan safe area -------------------------------------------------
+     Many TVs (especially older sets) zoom the HDMI picture ~3-5% and crop the
+     edges, so the board gets cut off even though the Pi outputs a correct
+     full frame. --safe pulls everything inward by N percent per side.
+     Set per TV with ?safe=4, remembered like the scale knob. 0 = no inset.  */
+  var SAFE_KEY = "dormwire.safe";
+  function clampSafe(n){ n = parseFloat(n); return isFinite(n) ? Math.min(12, Math.max(0, n)) : null; }
+  function applySafe(n){
+    document.documentElement.style.setProperty("--safe", String(n));
+    window.__uiSafe = n;
+  }
+  var safeUrl = (function(){ var m=/[?&]safe=([0-9.]+)/.exec(window.location.search); return m?clampSafe(m[1]):null; })();
+  if (safeUrl != null) { try { localStorage.setItem(SAFE_KEY, String(safeUrl)); } catch(e){} }
+  var safeVal = safeUrl;
+  if (safeVal == null) { try { safeVal = clampSafe(localStorage.getItem(SAFE_KEY)); } catch(e){ safeVal = null; } }
+  if (safeVal == null) safeVal = 0;
+  applySafe(safeVal);
+  window.uiSafe = function(){ return window.__uiSafe || 0; };
+  window.setUiSafe = function(n){ var v = clampSafe(n); if (v==null) return window.uiSafe();
+    try { localStorage.setItem(SAFE_KEY, String(v)); } catch(e){}
+    applySafe(v); return v; };
+
   window.uiScale = function () { return window.__uiScale || 1; };
 
   // Bigger text means fewer tiles fit on screen. Boards call this to thin the

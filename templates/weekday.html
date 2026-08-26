@@ -103,6 +103,20 @@ body{background:var(--bg);color:var(--ink);font-family:'Barlow Condensed',sans-s
 .rb-item .s{color:var(--tamber);}
 
 @keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+
+/* --- TV overscan safe area: inset the whole board by --safe percent per side.
+   Set with ?safe=4 (persists per device). 0 = flush to the panel edges. --- */
+:root{--safe:0;}
+.screen{
+  width:calc(100vw - (var(--safe) * 2vw));
+  height:calc(100vh - (var(--safe) * 2vh));
+  margin:calc(var(--safe) * 1vh) calc(var(--safe) * 1vw);
+}
+.ticker{
+  left:calc(var(--safe) * 1vw);
+  right:calc(var(--safe) * 1vw);
+  bottom:calc(var(--safe) * 1vh);
+}
 </style>
   <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
 </head>

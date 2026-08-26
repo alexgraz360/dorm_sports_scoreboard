@@ -188,6 +188,20 @@ h1,p{margin:0;}
 .wire-dots{flex:0 0 auto;display:flex;gap:6px;}
 .wire-dots i{width:7px;height:7px;background:rgba(255,255,255,.25);display:block;}
 .wire-dots i.on{background:var(--amber,#ffd23a);box-shadow:0 0 8px var(--amber,#ffd23a);}
+
+/* --- TV overscan safe area: inset the whole board by --safe percent per side.
+   Set with ?safe=4 (persists per device). 0 = flush to the panel edges. --- */
+:root{--safe:0;}
+.screen{
+  width:calc(100vw - (var(--safe) * 2vw));
+  height:calc(100vh - (var(--safe) * 2vh));
+  margin:calc(var(--safe) * 1vh) calc(var(--safe) * 1vw);
+}
+.ticker{
+  left:calc(var(--safe) * 1vw);
+  right:calc(var(--safe) * 1vw);
+  bottom:calc(var(--safe) * 1vh);
+}
 </style>
   <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
 </head>
