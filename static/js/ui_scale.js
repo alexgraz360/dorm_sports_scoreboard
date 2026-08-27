@@ -166,13 +166,24 @@
      board at 1pm on a Wednesday, when /api/board correctly said "weekday").
      Poll the selector and navigate when the target board changes. Query args
      (scale, safe) are carried across so per-TV tuning survives the switch.  */
-  var BOARD_POLL_MS = 60000;
+  var BOARD_POLL_MS = 5000;   // fast enough that a phone tap feels immediate
   async function boardWatcher() {
     try {
       var r = await fetch("/api/board", { cache: "no-store" });
       if (!r.ok) return;
       var d = await r.json();
-      var target = d && d.url;
+      if (!d) return;
+      // remote display knobs win over the per-device defaults
+      if (typeof d.scale === "number" && d.scale !== window.uiScale()) window.setUiScale(d.scale);
+      if (typeof d.safe === "number" && d.safe !== window.uiSafe()) window.setUiSafe(d.safe);
+      // pin + any other remote change: tell the board to re-render
+      if (window.__dwRev !== undefined && d.rev !== window.__dwRev) {
+        window.__dwPin = d.pin || null;
+        window.dispatchEvent(new CustomEvent("dormwire:state", { detail: d }));
+      }
+      window.__dwRev = d.rev;
+      window.__dwPin = d.pin || null;
+      var target = d.url;
       if (!target) return;
       if (target !== window.location.pathname) {
         window.location.href = target + window.location.search;

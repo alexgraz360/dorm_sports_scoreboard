@@ -2,53 +2,183 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dorm Wire — Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06030d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Dorm Wire Remote</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#06030d;--ink:#f4f6ff;--dim:#8b86b8;--cyan:#23f0ff;--magenta:#ff2fb9;--amber:#ffd23a;--green:#39ff14;}
-  *{box-sizing:border-box;}
-  body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
-    font-family:"VT323",monospace;display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px 16px;}
-  h1{font-family:"Press Start 2P",monospace;font-size:18px;color:var(--cyan);text-shadow:0 0 12px rgba(35,240,255,.6);margin:0;}
-  .status{font-size:22px;color:var(--dim);text-align:center;}
-  .status b{color:var(--amber);}
-  .grid{display:grid;grid-template-columns:repeat(2,minmax(140px,1fr));gap:12px;width:min(520px,100%);}
-  button{font-family:"Press Start 2P",monospace;font-size:11px;padding:16px 10px;cursor:pointer;
-    color:#06030d;background:var(--cyan);border:none;letter-spacing:1px;}
-  button.alt{background:var(--magenta);color:#fff;}
-  button.warn{background:var(--amber);}
-  button.wide{grid-column:span 2;background:#1a1330;color:var(--ink);border:2px solid var(--cyan);}
-  a.open{color:var(--green);font-size:20px;text-decoration:none;}
+  :root{
+    --bg:#06030d;--panel:#120a2b;--panel2:#0d0820;--ink:#f4f6ff;--dim:#8b86b8;
+    --cyan:#23f0ff;--magenta:#ff2fb9;--amber:#ffd23a;--green:#39ff14;--red:#ff3b5c;
+    --line:rgba(140,130,200,.28);
+    --pixel:"Press Start 2P",monospace;--term:"VT323",monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--term);
+    font-size:19px;padding:14px 12px 40px;max-width:760px;margin:0 auto;}
+  h1{font-family:var(--pixel);font-size:15px;color:var(--cyan);margin:0 0 2px;
+    text-shadow:0 0 10px rgba(35,240,255,.5);}
+  .sub{color:var(--dim);font-size:16px;margin-bottom:14px;}
+  .sub b{color:var(--amber);}
+  h2{font-family:var(--pixel);font-size:10px;color:var(--magenta);letter-spacing:1px;
+    margin:20px 0 8px;text-transform:uppercase;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;}
+  button{font-family:var(--pixel);font-size:10px;letter-spacing:.5px;padding:14px 8px;
+    border:2px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:8px;cursor:pointer;min-height:46px;}
+  button:active{transform:translateY(1px);}
+  button.on{background:var(--cyan);color:#06030d;border-color:var(--cyan);}
+  button.warn.on{background:var(--amber);border-color:var(--amber);}
+  /* game list */
+  .game{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+    padding:11px 12px;border:2px solid var(--line);border-radius:8px;background:var(--panel2);
+    margin-bottom:7px;cursor:pointer;}
+  .game.pinned{border-color:var(--amber);background:rgba(255,210,58,.12);}
+  .game.live{border-left:5px solid var(--green);}
+  .lg{font-family:var(--pixel);font-size:8px;color:#06030d;background:var(--cyan);
+    padding:4px 5px;border-radius:3px;}
+  .teams{font-size:22px;line-height:1.15;}
+  .teams .fav{color:var(--amber);}
+  .st{font-size:16px;color:var(--dim);text-align:right;white-space:nowrap;}
+  .st.live{color:var(--green);}
+  .pinmark{font-family:var(--pixel);font-size:8px;color:#06030d;background:var(--amber);
+    padding:4px 5px;border-radius:3px;}
+  /* sliders */
+  .row{display:flex;align-items:center;gap:12px;margin:10px 0;}
+  .row label{font-family:var(--pixel);font-size:9px;color:var(--dim);width:58px;}
+  input[type=range]{flex:1;accent-color:var(--cyan);height:34px;}
+  .val{font-size:19px;color:var(--amber);width:44px;text-align:right;}
+  .note{color:var(--dim);font-size:16px;margin-top:6px;}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+    background:var(--cyan);color:#06030d;font-family:var(--pixel);font-size:10px;
+    padding:11px 16px;border-radius:8px;opacity:0;transition:opacity .25s;pointer-events:none;}
+  .toast.show{opacity:1;}
 </style>
 </head>
 <body>
-  <h1>DORM WIRE · CONTROL</h1>
-  <div class="status" id="status">Loading…</div>
-  <div class="grid">
-    <button onclick="setBoard('auto')" class="wide">AUTO (BY SCHEDULE)</button>
-    <button onclick="setBoard('all')">ALL SPORTS</button>
-    <button onclick="setBoard('mlb')">MLB</button>
-    <button onclick="setBoard('nfl')">NFL</button>
-    <button onclick="setBoard('cfb')">COLLEGE FB</button>
-    <button onclick="setBoard('weekday')" class="alt">WEEKDAY</button>
-    <button onclick="setBoard('asleep')" class="warn">SLEEP SCREEN</button>
+  <h1>DORM WIRE · REMOTE</h1>
+  <div class="sub" id="status">Loading…</div>
+
+  <h2>Board</h2>
+  <div class="grid" id="boards"></div>
+
+  <h2>Pin a game to the big box</h2>
+  <div id="games"><div class="note">Loading today's games…</div></div>
+
+  <h2>Display</h2>
+  <div class="row">
+    <label>SIZE</label>
+    <input type="range" id="scale" min="0.8" max="2.0" step="0.05">
+    <span class="val" id="scaleVal">—</span>
   </div>
-  <a class="open" href="/board" target="_blank">OPEN CURRENT BOARD →</a>
-  <script>
-    async function refresh(){
-      const d = await (await fetch("/api/board",{cache:"no-store"})).json();
-      const mode = d.override ? ("FORCED: " + d.override.toUpperCase())
-                              : ("AUTO: " + d.auto.toUpperCase());
-      document.getElementById("status").innerHTML =
-        "Showing <b>" + d.board.toUpperCase() + "</b> &middot; " + mode;
-    }
-    async function setBoard(b){
-      await fetch("/api/board/override?board=" + encodeURIComponent(b), {cache:"no-store"});
-      refresh();
-    }
-    refresh();
-    setInterval(refresh, 15000);
-  </script>
+  <div class="row">
+    <label>EDGE</label>
+    <input type="range" id="safe" min="0" max="12" step="0.5">
+    <span class="val" id="safeVal">—</span>
+  </div>
+  <div class="note">SIZE = text size. EDGE = pull the board in from the screen edges if your TV crops it.</div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let state = {};
+
+const BOARDS = [
+  ["auto", "AUTO"], ["all", "ALL SPORTS"], ["mlb", "MLB"],
+  ["nfl", "NFL"], ["cfb", "COLLEGE"], ["weekday", "WEEKDAY"], ["asleep", "SLEEP"],
+];
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 1600);
+}
+function esc(v) {
+  return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+function renderBoards() {
+  $("boards").innerHTML = BOARDS.map(([id, label]) => {
+    const active = state.override ? state.override === id : id === "auto";
+    const cls = (id === "asleep" ? "warn " : "") + (active ? "on" : "");
+    return `<button class="${cls}" data-board="${id}">${label}</button>`;
+  }).join("");
+}
+
+function renderStatus() {
+  const mode = state.override
+    ? `forced <b>${esc(state.override.toUpperCase())}</b>`
+    : `auto → <b>${esc(String(state.auto || "").toUpperCase())}</b>`;
+  const pin = state.pin ? " · 📌 pinned" : "";
+  $("status").innerHTML = `Showing <b>${esc(String(state.board || "").toUpperCase())}</b> · ${mode}${pin}`;
+}
+
+function renderGames() {
+  const games = state.games || [];
+  if (!games.length) {
+    $("games").innerHTML = `<div class="note">No games today.</div>`;
+    return;
+  }
+  $("games").innerHTML = games.map((g) => {
+    const pinned = state.pin === g.id;
+    const score = (g.isLive || g.isFinal) ? `${g.awayScore}–${g.homeScore}` : "";
+    const away = g.fav ? `<span class="fav">${esc(g.away)}</span>` : esc(g.away);
+    const home = g.fav ? `<span class="fav">${esc(g.home)}</span>` : esc(g.home);
+    return `<div class="game ${pinned ? "pinned" : ""} ${g.isLive ? "live" : ""}" data-id="${esc(g.id)}">
+      <span class="lg">${esc(g.sport.toUpperCase())}</span>
+      <span class="teams">${away} @ ${home} <b>${esc(score)}</b></span>
+      <span class="st ${g.isLive ? "live" : ""}">${pinned ? '<span class="pinmark">PINNED</span> ' : ""}${esc(g.detail || g.startTime)}</span>
+    </div>`;
+  }).join("");
+}
+
+async function load() {
+  try {
+    const r = await fetch("/api/control/state", { cache: "no-store" });
+    state = await r.json();
+    renderStatus(); renderBoards(); renderGames();
+    if (state.scale != null) { $("scale").value = state.scale; $("scaleVal").textContent = (+state.scale).toFixed(2); }
+    else $("scaleVal").textContent = "auto";
+    if (state.safe != null) { $("safe").value = state.safe; $("safeVal").textContent = (+state.safe).toFixed(1); }
+    else $("safeVal").textContent = "auto";
+  } catch (e) { $("status").textContent = "Can't reach the board."; }
+}
+
+// board buttons
+$("boards").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-board]"); if (!b) return;
+  const id = b.dataset.board;
+  await fetch("/api/board/override?board=" + encodeURIComponent(id), { cache: "no-store" });
+  toast(id === "auto" ? "Back to schedule" : id.toUpperCase());
+  load();
+});
+
+// tap a game to pin / unpin
+$("games").addEventListener("click", async (e) => {
+  const row = e.target.closest(".game[data-id]"); if (!row) return;
+  const id = row.dataset.id;
+  const next = state.pin === id ? "" : id;
+  await fetch("/api/control/pin?game=" + encodeURIComponent(next), { cache: "no-store" });
+  toast(next ? "Pinned to the big box" : "Unpinned");
+  load();
+});
+
+// display sliders (fire on release so we don't spam the server)
+function wireSlider(id, key, digits) {
+  const el = $(id), out = $(id + "Val");
+  el.addEventListener("input", () => { out.textContent = (+el.value).toFixed(digits); });
+  el.addEventListener("change", async () => {
+    await fetch(`/api/control/display?${key}=${encodeURIComponent(el.value)}`, { cache: "no-store" });
+    toast(key === "scale" ? "Text size updated" : "Edge inset updated");
+  });
+}
+wireSlider("scale", "scale", 2);
+wireSlider("safe", "safe", 1);
+
+load();
+setInterval(load, 15000);
+</script>
 </body>
 </html>

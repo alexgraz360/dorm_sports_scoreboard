@@ -62,8 +62,34 @@ BOARD_URLS = {
     "mlb": "/",
 }
 
-# In-memory manual override (kiosk control). board="auto" clears it.
-_override: dict = {"board": None}
+# ---------------- remote-control state ----------------
+# Everything the phone remote can change lives here. `rev` bumps on every
+# change; the boards poll /api/board and re-render when it moves, which is what
+# makes a tap on the phone show up on the TV a few seconds later.
+_state: dict = {
+    "board": None,      # forced board id, None = follow the day/time schedule
+    "pin": None,        # game id locked into the GAME FOCUS slot
+    "scale": None,      # display scale override (None = per-device default)
+    "safe": None,       # overscan safe-area override
+    "rev": 0,
+}
+
+
+def _bump(**changes) -> None:
+    _state.update(changes)
+    _state["rev"] += 1
+
+
+# Backwards-compatible alias: existing code reads _override["board"].
+class _OverrideView:
+    def __getitem__(self, k):
+        return _state.get(k)
+
+    def __setitem__(self, k, v):
+        _bump(**{k: v})
+
+
+_override = _OverrideView()
 
 # Tiny cache so the Mon/Thu "is an NFL game on?" check does not hit ESPN often.
 _nfl_cache: dict = {"at": None, "value": False}
@@ -207,6 +233,10 @@ def api_board():
         "override": _override["board"],
         "asleep": current == board_selector.ASLEEP,
         "now": now.isoformat(),
+        "pin": _state["pin"],
+        "scale": _state["scale"],
+        "safe": _state["safe"],
+        "rev": _state["rev"],
     })
 
 
@@ -261,6 +291,66 @@ def api_fantasy_wire():
     except requests.RequestException as exc:
         return jsonify({"error": f"Fantasy wire unavailable: {exc}",
                         "demo": True, "items": []}), 502
+
+
+
+
+# ---------------- phone remote endpoints ----------------
+
+@sports_bp.route("/api/control/pin")
+def api_control_pin():
+    """Lock a game into the GAME FOCUS slot. ?game=<id>, or ?game= to clear."""
+    game = (request.args.get("game") or "").strip()
+    _bump(pin=game or None)
+    return jsonify({"pin": _state["pin"], "rev": _state["rev"]})
+
+
+@sports_bp.route("/api/control/display")
+def api_control_display():
+    """Set the per-TV display knobs from the remote: ?scale=1.1&safe=6."""
+    changes = {}
+    if "scale" in request.args:
+        try:
+            changes["scale"] = max(0.8, min(2.5, float(request.args["scale"])))
+        except ValueError:
+            return jsonify({"error": "scale must be a number"}), 400
+    if "safe" in request.args:
+        try:
+            changes["safe"] = max(0.0, min(12.0, float(request.args["safe"])))
+        except ValueError:
+            return jsonify({"error": "safe must be a number"}), 400
+    if not changes:
+        return jsonify({"error": "nothing to set"}), 400
+    _bump(**changes)
+    return jsonify({"scale": _state["scale"], "safe": _state["safe"], "rev": _state["rev"]})
+
+
+@sports_bp.route("/api/control/state")
+def api_control_state():
+    """Everything the remote needs in one call: current board + today's games."""
+    try:
+        today = build_all_today()
+        games = [{
+            "id": g["id"], "sport": g["sport"],
+            "away": g["away"]["abbrev"], "home": g["home"]["abbrev"],
+            "awayName": g["away"]["shortName"], "homeName": g["home"]["shortName"],
+            "awayScore": g["away"]["score"], "homeScore": g["home"]["score"],
+            "detail": g["detail"], "isLive": g["isLive"], "isFinal": g["isFinal"],
+            "fav": bool(g["away"]["fav"] or g["home"]["fav"]),
+            "startTime": g.get("startTime", ""),
+        } for g in today.get("games", [])]
+    except requests.RequestException:
+        games = []
+    return jsonify({
+        "board": _current_board(),
+        "auto": board_selector.select_board(datetime.now(EASTERN)),
+        "override": _state["board"],
+        "pin": _state["pin"],
+        "scale": _state["scale"],
+        "safe": _state["safe"],
+        "rev": _state["rev"],
+        "games": games,
+    })
 
 
 @sports_bp.route("/sleep")

@@ -112,7 +112,9 @@ function renderGrid() {
     el("#games-grid").innerHTML = `<article class="tile"><span>NO GAMES RIGHT NOW</span></article>`;
     return;
   }
-  const focus = focusPool[focusIndex % Math.max(focusPool.length, 1)].g;
+  // A game pinned from the phone remote overrides the rotation entirely.
+  const pinned = window.__dwPin ? games.find((g) => g.id === window.__dwPin) : null;
+  const focus = pinned || focusPool[focusIndex % Math.max(focusPool.length, 1)].g;
   const rest = games.filter((g) => g.id !== focus.id).slice(0, 8);
   el("#games-grid").innerHTML = [tile(focus, true), ...rest.map((g) => tile(g, false))].join("");
 }
@@ -193,6 +195,7 @@ function startTimers() {
   clearInterval(focusTimer);
   clearInterval(sbTimer);
   focusTimer = setInterval(() => {
+    if (window.__dwPin) return;               // pinned: hold this game
     if (focusPool.length > 1) { focusIndex = (focusIndex + 1) % focusPool.length; renderGrid(); }
   }, FOCUS_ROTATION_MS);
   sbTimer = setInterval(() => { sbPage = (sbPage + 1) % 3; renderSidebar(); }, SB_ROTATION_MS);
@@ -205,3 +208,7 @@ loadTicker();
 startTimers();
 setInterval(loadScores, REFRESH_MS);
 setInterval(loadTicker, REFRESH_MS);
+
+// The phone remote changed something (pin, etc.) — re-render straight away
+// instead of waiting for the next 60s data poll.
+window.addEventListener("dormwire:state", () => { renderGrid(); renderSidebar(); });
