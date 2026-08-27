@@ -118,7 +118,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Barlow Condensed',sans-s
   bottom:calc(var(--safe) * 1vh);
 }
 </style>
-  <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ui_scale.js') }}?v={{ asset_v }}"></script>
 </head>
 <body>
 <div class="screen">
@@ -165,6 +165,6 @@ body{background:var(--bg);color:var(--ink);font-family:'Barlow Condensed',sans-s
   </div>
 </div>
 
-  <script src="{{ url_for('static', filename='js/weekday.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/weekday.js') }}?v={{ asset_v }}"></script>
 </body>
 </html>

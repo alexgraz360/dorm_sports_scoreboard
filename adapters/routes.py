@@ -8,6 +8,7 @@ the ESPN-backed leagues in ENABLED_LEAGUES.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import requests
 from flask import Blueprint, jsonify, redirect, render_template, request
@@ -24,6 +25,30 @@ from .espn import (
 )
 
 sports_bp = Blueprint("sports", __name__)
+
+# ---------------- static asset cache-busting ----------------
+# The kiosk browser held on to an old all_sports.js after a deploy: the server
+# had the new file but the screen kept rendering the previous build. Stamp every
+# static URL with the newest mtime in static/ so a deploy always produces a new
+# URL and the kiosk cannot serve a stale copy.
+_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
+def _asset_version() -> str:
+    latest = 0.0
+    try:
+        for f in _STATIC_DIR.rglob("*"):
+            if f.is_file():
+                latest = max(latest, f.stat().st_mtime)
+    except OSError:
+        pass
+    return str(int(latest))
+
+
+@sports_bp.app_context_processor
+def _inject_asset_version():
+    return {"asset_v": _asset_version()}
+
 
 # Where each board id currently lives. Boards not yet built (a dedicated NFL/CFB
 # football board is Phase 5, weekday is Phase 7) fall back to the all-sports

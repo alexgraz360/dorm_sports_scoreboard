@@ -199,7 +199,7 @@ h1,p{margin:0;}
   bottom:calc(var(--safe) * 1vh);
 }
 </style>
-  <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ui_scale.js') }}?v={{ asset_v }}"></script>
 </head>
 <body>
   <main class="screen">
@@ -228,6 +228,6 @@ h1,p{margin:0;}
     <div class="ticker-window"><div id="ticker-track" class="ticker-track"><span>Loading the wire…</span></div></div>
   </footer>
 
-  <script src="{{ url_for('static', filename='js/all_sports.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/all_sports.js') }}?v={{ asset_v }}"></script>
 </body>
 </html>

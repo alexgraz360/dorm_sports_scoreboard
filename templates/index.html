@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v={{ asset_v }}">
+    <script src="{{ url_for('static', filename='js/ui_scale.js') }}?v={{ asset_v }}"></script>
 </head>
   <body>
     <main class="screen">
@@ -52,6 +52,6 @@
       </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ asset_v }}"></script>
   </body>
 </html>

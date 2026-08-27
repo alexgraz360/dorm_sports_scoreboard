@@ -203,7 +203,7 @@ h1,p{margin:0;}
   bottom:calc(var(--safe) * 1vh);
 }
 </style>
-  <script src="{{ url_for('static', filename='js/ui_scale.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ui_scale.js') }}?v={{ asset_v }}"></script>
 </head>
 <body data-league="{{ league }}">
   <main class="screen">
@@ -236,7 +236,7 @@ h1,p{margin:0;}
   </footer>
   <div id="td-anim"></div>
 
-  <script src="{{ url_for('static', filename='js/football.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/td_animation.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/football.js') }}?v={{ asset_v }}"></script>
+  <script src="{{ url_for('static', filename='js/td_animation.js') }}?v={{ asset_v }}"></script>
 </body>
 </html>
