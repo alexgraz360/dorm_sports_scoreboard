@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree
@@ -534,4 +535,7 @@ def mlb_ticker():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    # Bind address is configurable so the phone remote can reach the board.
+    # Default stays localhost-only; the Pi sets DORMWIRE_HOST=0.0.0.0 in .env and
+    # firewalls port 5000 to loopback + Tailscale (see scripts/lock_port.sh).
+    app.run(host=os.getenv("DORMWIRE_HOST", "127.0.0.1"), port=5000, debug=False)
