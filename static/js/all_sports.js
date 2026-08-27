@@ -82,8 +82,12 @@ function tile(g, featured) {
   const body = featured
     ? reasons + `<div class="rows">${teamRow(g, g.away, true)}${teamRow(g, g.home, true)}</div>`
       + vizHTML(g) + wpHTML(g) + leadersHTML(g, true)
+    // Compact tiles: score rows + the live graphic only. The leaders line does
+    // not fit alongside the bases/field graphic in a short tile — it was being
+    // clipped to a few pixels of unreadable text. Leaders stay on the featured
+    // tile, which has the room for them.
     : `<div class="rows">${teamRow(g, g.away, false)}${teamRow(g, g.home, false)}</div>`
-      + vizHTML(g) + leadersHTML(g, false);
+      + vizHTML(g);
   const detail = esc(g.detail || "");
   const foot = featured
     ? `<div class="tile-foot"><span class="count">${esc(g.sport.toUpperCase())} · ${detail}</span>${flag}</div>`
