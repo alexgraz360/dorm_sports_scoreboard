@@ -7,11 +7,13 @@
 # and drop everything else. Only port 5000 is touched, so SSH is unaffected.
 set -euo pipefail
 PORT=5000
+# run iptables directly when we are already root (systemd), else via sudo
+IPT="iptables"; [ "$(id -u)" -eq 0 ] || IPT="sudo iptables"
 add() {  # add rule only if it isn't already present
-  sudo iptables -C "$@" 2>/dev/null || sudo iptables -A "$@"
+  $IPT -C "$@" 2>/dev/null || $IPT -A "$@"
 }
 add INPUT -p tcp --dport "$PORT" -i lo -j ACCEPT
 add INPUT -p tcp --dport "$PORT" -i tailscale0 -j ACCEPT
 add INPUT -p tcp --dport "$PORT" -j DROP
 echo "Rules for port $PORT:"
-sudo iptables -L INPUT -n --line-numbers | grep ":$PORT" || true
+$IPT -L INPUT -n --line-numbers | grep ":$PORT" || true

@@ -109,6 +109,24 @@ def _nfl_game_today() -> bool:
     return value
 
 
+# Cache "does this league have games today" so the empty-board guard below does
+# not hit ESPN on every poll (the boards ask every 5s).
+_slate_cache: dict = {}
+
+
+def _league_has_games(league: str) -> bool:
+    now = datetime.now(EASTERN)
+    hit = _slate_cache.get(league)
+    if hit and now - hit[0] < timedelta(minutes=15):
+        return hit[1]
+    try:
+        value = bool(fetch_games(league))
+    except requests.RequestException:
+        value = True   # network trouble: do not strand the board on a fallback
+    _slate_cache[league] = (now, value)
+    return value
+
+
 def _current_board() -> str:
     if _override["board"]:
         return _override["board"]
@@ -116,7 +134,14 @@ def _current_board() -> str:
     has_nfl = False
     if now.weekday() in (0, 3) and board_selector.is_nfl_season(now):
         has_nfl = _nfl_game_today()
-    return board_selector.select_board(now, has_nfl)
+    board = board_selector.select_board(now, has_nfl)
+    # A dedicated league board with nothing on it is a dead screen. Now that the
+    # slate is filtered to today only, that happens all through the offseason
+    # (e.g. a Saturday before the college season opens), so fall back to the
+    # all-sports board, which shows whatever IS on.
+    if board in (board_selector.NFL, board_selector.CFB) and not _league_has_games(board):
+        return board_selector.ALL
+    return board
 
 
 @sports_bp.route("/all")
