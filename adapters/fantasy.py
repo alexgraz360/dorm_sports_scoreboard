@@ -177,6 +177,12 @@ def build_fantasy_rail() -> dict:
         for season in candidate_seasons:
             rail = _build_person_rail(username, str(season), week)
             if rail:
+                # _build_person_rail labels by Sleeper display name ("AlexGraz360"),
+                # but the ESPN merge below looks for the config key ("Alex"). Keep
+                # the handle for reference and label by the key, or ESPN leagues get
+                # attached to a separate person and you appear on the board twice.
+                rail["handle"] = rail.get("person")
+                rail["person"] = _person
                 rail["season"] = str(season)
                 rail["current"] = season == cur_season
                 used_seasons.add(str(season))
@@ -193,6 +199,16 @@ def build_fantasy_rail() -> dict:
                 alex["leagues"].extend(espn_person["leagues"])
             else:
                 people.append(espn_person)
+
+    # Drop leagues with no roster. A Sleeper account accumulates leagues that
+    # were created but never drafted; they carry no starters and no score, so
+    # rotating the rail through them just shows empty panels.
+    for person in people:
+        drafted = [lg for lg in person.get("leagues", [])
+                   if (lg.get("me") or {}).get("starters")]
+        if drafted:
+            person["leagues"] = drafted
+    people = [p for p in people if p.get("leagues")]
 
     if people:
         return {"source": "Sleeper+ESPN", "season": str(cur_season), "week": week,
