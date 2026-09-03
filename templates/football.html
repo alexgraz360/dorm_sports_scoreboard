@@ -77,7 +77,7 @@ h1,p{margin:0;}
 .fw-title{font-family:var(--pixel);font-size:clamp(calc(7px * var(--s)),calc(.66vw * var(--s)),calc(10px * var(--s)));color:var(--green);text-shadow:0 0 8px var(--green);flex:0 0 auto;position:relative;z-index:1;}
 .fw-list{display:flex;flex-direction:column;gap:.35vh;overflow:hidden;position:relative;z-index:1;}
 .fw-item{font-size:clamp(calc(12px * var(--s)),calc(1vw * var(--s)),calc(17px * var(--s)));color:#d6ffe8;display:flex;gap:.5vw;align-items:baseline;line-height:1.05;}
-.fw-tag{font-family:var(--pixel);font-size:clamp(calc(6px * var(--s)),calc(.52vw * var(--s)),calc(8px * var(--s)));padding:2px 4px;flex:0 0 auto;color:#06030d;}
+.fw-item .fw-tag{font-family:var(--pixel);font-size:clamp(calc(6px * var(--s)),calc(.52vw * var(--s)),calc(8px * var(--s)));padding:2px 4px;flex:0 0 auto;color:#06030d;}
 .fw-tag.td{background:var(--amber);} .fw-tag.inj{background:var(--red);color:#fff;} .fw-tag.score{background:var(--cyan);}
 
 /* touchdown animation overlay is styled/injected by td_animation.js */
@@ -109,7 +109,11 @@ h1,p{margin:0;}
 .rank{font-family:var(--pixel);font-size:clamp(calc(6px * var(--s)),calc(.62vw * var(--s)),calc(10px * var(--s)));color:#06030d;background:var(--amber);padding:2px 4px;}
 .code{font-size:clamp(16px,calc(24cqh * var(--s)),190px);line-height:1;color:var(--ink);text-shadow:0 0 8px color-mix(in srgb,var(--team) 60%,transparent);}
 .name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pixel);font-size:clamp(calc(6px * var(--s)),calc(.6vw * var(--s)),calc(10px * var(--s)));color:var(--dim);}
-.score{font-size:clamp(18px,calc(26cqh * var(--s)),210px);line-height:.9;color:var(--ink);text-align:right;text-shadow:0 0 10px rgba(255,255,255,.25);}
+/* Scoped to the score row on purpose: a bare .score also matched the
+   fantasy wire's <span class="fw-tag score"> badge, and being declared
+   later it beat .fw-tag on equal specificity — rendering the word SCORE
+   at 210px across the panel. */
+.trow .score{font-size:clamp(18px,calc(26cqh * var(--s)),210px);line-height:.9;color:var(--ink);text-align:right;text-shadow:0 0 10px rgba(255,255,255,.25);}
 .featured .code{font-size:clamp(20px,calc(20cqh * var(--s)),210px);}
 .featured .score{font-size:clamp(22px,calc(22cqh * var(--s)),230px);}
 .featured .name{font-size:clamp(calc(9px * var(--s)),calc(.85vw * var(--s)),calc(15px * var(--s)));}
