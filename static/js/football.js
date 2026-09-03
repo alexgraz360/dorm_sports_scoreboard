@@ -156,12 +156,16 @@ function renderFantasyWire(wire) {
   const box = el("#fwire");
   if (!box) return;
   const items = (wire && wire.items) || [];
+  // Before kickoff the backend serves sample wire items so the panel is not
+  // blank. Those are not real events: never celebrate them, and say so on the
+  // title rather than passing fiction off as live news.
+  const isDemo = !!(wire && wire.demo);
   const rows = items.slice(0, 6).map((i) => {
     const kind = (i.kind || "score");
     return `<div class="fw-item"><span class="fw-tag ${esc(kind)}">${esc(kind.toUpperCase())}</span>`
       + `<span>${esc(i.text)}</span></div>`;
   }).join("");
-  box.innerHTML = `<div class="fw-title">FANTASY WIRE</div>`
+  box.innerHTML = `<div class="fw-title">FANTASY WIRE${isDemo ? " · SAMPLE" : ""}</div>`
     + `<div class="fw-list">${rows || '<div class="fw-item"><span>Quiet on the wire…</span></div>'}</div>`;
   // Fire the TD animation for any touchdown we haven't shown yet. The real
   // per-type scene lives in td_animation.js as window.fireTdAnimation(kind,…).
@@ -169,14 +173,14 @@ function renderFantasyWire(wire) {
   for (const td of tds) {
     if (!seenTds.has(td.text)) {
       seenTds.add(td.text);
-      if (fantasyPrimed) playTd(td);
+      if (fantasyPrimed && !isDemo) playTd(td);
     }
   }
   // On the very first load, don't retro-fire for every pre-existing TD — but
   // do show one so the effect is visible, then only fire on genuinely new TDs.
   if (!fantasyPrimed) {
     fantasyPrimed = true;
-    if (tds.length) playTd(tds[0]);
+    if (!isDemo && tds.length) playTd(tds[0]);
   }
 }
 
