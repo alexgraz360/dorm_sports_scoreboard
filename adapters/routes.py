@@ -34,14 +34,24 @@ sports_bp = Blueprint("sports", __name__)
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
+_TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
+
+
 def _asset_version() -> str:
+    """Newest mtime across static/ AND templates/.
+
+    Templates are included on purpose: static-only versioning still left the
+    kiosk showing old markup, because the browser keeps the HTML document until
+    the page navigates. The boards poll this and reload when it moves.
+    """
     latest = 0.0
-    try:
-        for f in _STATIC_DIR.rglob("*"):
-            if f.is_file():
-                latest = max(latest, f.stat().st_mtime)
-    except OSError:
-        pass
+    for folder in (_STATIC_DIR, _TEMPLATE_DIR):
+        try:
+            for f in folder.rglob("*"):
+                if f.is_file():
+                    latest = max(latest, f.stat().st_mtime)
+        except OSError:
+            pass
     return str(int(latest))
 
 
@@ -262,6 +272,7 @@ def api_board():
         "scale": _state["scale"],
         "safe": _state["safe"],
         "rev": _state["rev"],
+        "version": _asset_version(),
     })
 
 

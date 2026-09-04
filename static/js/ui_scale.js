@@ -181,6 +181,16 @@
         window.__dwPin = d.pin || null;
         window.dispatchEvent(new CustomEvent("dormwire:state", { detail: d }));
       }
+      // A deploy changed the markup or scripts: reload so the kiosk actually
+      // picks it up. Without this the TV keeps rendering the previous build
+      // until the board happens to switch (a new tile simply never appeared).
+      if (d.version) {
+        if (window.__dwVer && d.version !== window.__dwVer) {
+          window.location.reload();
+          return;
+        }
+        window.__dwVer = d.version;
+      }
       window.__dwRev = d.rev;
       window.__dwPin = d.pin || null;
       var target = d.url;
