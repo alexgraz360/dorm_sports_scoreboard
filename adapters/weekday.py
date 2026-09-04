@@ -13,12 +13,13 @@ the board never blanks. Secret values are read by name and never logged.
 
 from __future__ import annotations
 
+import re
 import os
 from datetime import date, datetime, timedelta, timezone
 
 import requests
 
-from . import config
+from . import config, school_calendar
 from .espn import EASTERN
 
 TIMEOUT = 8
@@ -272,6 +273,10 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
                     "title": cur.get("summary", "(busy)"),
                     "room": cur.get("location", "—"),
                     "now": 0,
+                    # end-of-event, used by the Glenwild advice to work out when
+                    # you'd actually be driving back. -1 when the feed omits DTEND.
+                    "endMin": (cur["end"].hour * 60 + cur["end"].minute)
+                              if cur.get("end") else -1,
                 })
         elif in_event and line.startswith("DTSTART"):
             value = line.split(":", 1)[-1].strip()
@@ -280,6 +285,10 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
             if dt:
                 cur["start"] = dt
                 cur["allday"] = allday
+        elif in_event and line.startswith("DTEND"):
+            dt = _parse_ical_dt(line.split(":", 1)[-1].strip(), now.tzinfo)
+            if dt:
+                cur["end"] = dt
         elif in_event and line.startswith("RRULE"):
             cur["rrule"] = _parse_rrule(line.split(":", 1)[-1].strip())
         elif in_event and line.startswith("EXDATE"):
@@ -434,17 +443,101 @@ def _news_cat(topics: list[str], title: str) -> str:
     return "MARKETS"
 
 
+# ============ Glenwild back-entrance advice ============
+
+# Titles that mean "I am at work and will drive back afterwards". Working from
+# the dorm ("WFM Work?" / "WFH") involves no drive, and "Work Lunch?" is a
+# lunch, so neither should produce a return trip.
+
+
+_NOT_COMMUTE_WORDS = ("wfh", "wfm", "remote", "lunch")
+
+
+def _is_commute_work(title: str) -> bool:
+    """A work block you physically drive back from."""
+    t = (title or "").lower()
+    return "work" in t and not any(w in t for w in _NOT_COMMUTE_WORDS)
+
+
+def _return_time(events: list[dict]) -> int | None:
+    """Minute-of-day you'd most likely be driving back to campus.
+
+    The end of an on-site work block. Mornings are never a problem (you leave
+    at 7-8am, well before the 8:30 bell), so only ends after 10:00 count.
+    """
+    ends = [e["endMin"] for e in events or []
+            if e.get("endMin", -1) >= 600
+            and _is_commute_work(e.get("title", ""))]
+    return min(ends) if ends else None
+
+
+def build_commute(alex_events: list[dict] | None = None, now: datetime | None = None) -> dict:
+    """Whether the Glenwild back entrance is a good idea today.
+
+    Normal dismissal (3:15pm) rarely clashes with a midday drive back; early
+    dismissal (12:45pm) does, which is the case worth warning about.
+    """
+    now = now or datetime.now(EASTERN)
+    info = school_calendar.school_day(now.date())
+    out = {
+        "school": school_calendar.SCHOOL_NAME,
+        "status": info["status"],
+        "note": info["note"],
+        "arrival": school_calendar._fmt(info["arrival"]),
+        "dismissal": school_calendar._fmt(info["dismissal"]),
+        "returnAt": "",
+        "verdict": "clear",
+        "headline": "BACK ENTRANCE OK",
+        "detail": "",
+    }
+
+    if not info["inSession"]:
+        out["detail"] = f"{info['note']} - no school traffic"
+        return out
+
+    # Only dismissal matters for the verdict. The 8:30 bell is long after the
+    # 7-8am departure, so drop-off has never been a problem going OUT - the
+    # arrival time is shown for information, not warned about.
+    windows = [w for w in school_calendar.traffic_windows(now.date()) if w[2] == "dismissal"]
+    now_min = now.hour * 60 + now.minute
+    ret = _return_time(alex_events)
+    if ret is not None:
+        out["returnAt"] = f"{(ret // 60) % 12 or 12}:{ret % 60:02d}{'a' if ret < 720 else 'p'}"
+
+    def _clash(minute: int) -> str | None:
+        for lo, hi, label in windows:
+            if lo <= minute <= hi:
+                return label
+        return None
+
+    live = _clash(now_min)
+    planned = _clash(ret) if ret is not None else None
+
+    if live:
+        out.update(verdict="avoid", headline="AVOID GLENWILD NOW",
+                   detail=f"{live} traffic - use the front entrance")
+    elif planned:
+        out.update(verdict="avoid", headline="AVOID GLENWILD",
+                   detail=f"{info['note'].lower()} - you're back near {out['returnAt']}, "
+                          f"{planned} is {out['dismissal']}")
+    else:
+        out["detail"] = (f"school {out['arrival']}-{out['dismissal']}"
+                         + (f" - you're back near {out['returnAt']}" if ret is not None else ""))
+    return out
+
 # ============ Aggregate ============
 
 def build_weekday() -> dict:
     now = datetime.now(EASTERN)
+    scheds = build_schedules()
     return {
         "date": now.strftime("%Y-%m-%d"),
         "dateline": now.strftime("%A · %b %d").upper(),
         "generatedAt": now.isoformat(),
         "quote": quote_of_the_day(now),
         "weather": build_weather(),
-        "schedules": build_schedules(),
+        "schedules": scheds,
+        "commute": build_commute(scheds.get("alex"), now),
         "markets": build_markets(),
         "news": build_news(),
     }

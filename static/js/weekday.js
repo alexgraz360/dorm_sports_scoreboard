@@ -93,6 +93,19 @@ function renderRibbon(markets) {
   $("ribbon").innerHTML = one + one;
 }
 
+
+/* ---------------- Glenwild back-entrance advice ---------------- */
+function renderCommute(c) {
+  if (!c) return;
+  const box = $("commute");
+  box.classList.toggle("avoid", c.verdict === "avoid");
+  $("cmt-head").textContent = c.headline || "";
+  $("cmt-detail").textContent = c.detail || "";
+  // Right-hand column: today's bells, or a dash when school is closed.
+  $("cmt-bell").textContent = c.dismissal ? `${c.arrival}-${c.dismissal}` : "—";
+  $("cmt-school").textContent = (c.status === "closed" ? "NO SCHOOL" : "TJS SCHOOL");
+}
+
 /* ---------------- clock ---------------- */
 function clock() {
   const d = new Date();
@@ -116,6 +129,7 @@ async function load() {
     renderSched($("sched-alex"), (d.schedules || {}).alex);
     renderSched($("sched-nolan"), (d.schedules || {}).nolan);
     renderWeather(d.weather);
+    renderCommute(d.commute);
     renderRail();
     renderNews(d.news);
     renderRibbon(d.markets);
