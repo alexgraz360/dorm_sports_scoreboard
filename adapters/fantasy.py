@@ -267,6 +267,14 @@ def _espn_team_name(team: dict) -> str:
             or f"Team {team.get('id', '?')}")
 
 
+# Canonical fantasy lineup order: QB, RB, WR, TE, FLEX, D/ST, K. ESPN returns
+# roster entries in acquisition order, so without this the lineup reads as a
+# jumble (QB showing up eighth). Sleeper already comes back in slot order.
+ESPN_POS_ORDER = {"QB": 0, "RB": 1, "WR": 2, "TE": 3,
+                  "FLEX": 4, "RB/WR": 4, "WR/TE": 4, "OP": 4,
+                  "D/ST": 6, "K": 7}
+
+
 def _espn_starters(team: dict) -> list[dict]:
     entries = ((team.get("roster") or {}).get("entries")) or []
     out = []
@@ -280,6 +288,9 @@ def _espn_starters(team: dict) -> list[dict]:
             "pos": ESPN_SLOTS.get(slot, ""),
             "points": round(float(e.get("playerPoolEntry", {}).get("appliedStatTotal", 0) or 0), 1),
         })
+    # Stable sort, so multiple RBs/WRs keep ESPN's own ordering within a slot.
+    # Anything unrecognised sorts between FLEX and D/ST rather than vanishing.
+    out.sort(key=lambda p: ESPN_POS_ORDER.get(p["pos"], 5))
     return out
 
 
