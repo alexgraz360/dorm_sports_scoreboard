@@ -120,7 +120,6 @@ let fantasyCards = [];   // flattened (person, league) entries
 let fantasyIndex = 0;
 let fantasyTimer = null;
 let seenTds = new Set();
-let fantasyPrimed = false;
 
 function renderFantasyRail() {
   const box = el("#frail");
@@ -167,20 +166,16 @@ function renderFantasyWire(wire) {
   }).join("");
   box.innerHTML = `<div class="fw-title">FANTASY WIRE${isDemo ? " · SAMPLE" : ""}</div>`
     + `<div class="fw-list">${rows || '<div class="fw-item"><span>Quiet on the wire…</span></div>'}</div>`;
-  // Fire the TD animation for any touchdown we haven't shown yet. The real
-  // per-type scene lives in td_animation.js as window.fireTdAnimation(kind,…).
-  const tds = items.filter((i) => (i.kind || "") === "td");
-  for (const td of tds) {
-    if (!seenTds.has(td.text)) {
-      seenTds.add(td.text);
-      if (fantasyPrimed && !isDemo) playTd(td);
-    }
-  }
-  // On the very first load, don't retro-fire for every pre-existing TD — but
-  // do show one so the effect is visible, then only fire on genuinely new TDs.
-  if (!fantasyPrimed) {
-    fantasyPrimed = true;
-    if (!isDemo && tds.length) playTd(tds[0]);
+  // Celebrate a touchdown only when the server says it just happened (fresh =
+  // first seen within the last few minutes). Keying off freshness rather than
+  // 'not yet seen by this page' means a reload, board switch or deploy never
+  // replays touchdowns from earlier in the day. One animation per refresh, so
+  // simultaneous scores do not stack on top of each other.
+  if (!isDemo) {
+    const tds = items.filter((i) => i.kind === "td");
+    const fresh = tds.filter((i) => i.fresh && !seenTds.has(i.id || i.text));
+    tds.forEach((i) => seenTds.add(i.id || i.text));
+    if (fresh.length) playTd(fresh[0]);
   }
 }
 
@@ -262,6 +257,9 @@ async function loadTicker() {
 }
 
 const FANTASY_ROTATE_MS = 8_000;
+// loadFantasy used to run once at page load and never again, so fantasy
+// points and the wire only moved when the page happened to reload.
+const FANTASY_REFRESH_MS = 60_000;
 function startTimers() {
   clearInterval(focusTimer);
   focusTimer = setInterval(() => {
@@ -280,5 +278,6 @@ loadTicker();
 loadFantasy();
 startTimers();
 setInterval(loadScores, REFRESH_MS);
+setInterval(loadFantasy, FANTASY_REFRESH_MS);
 setInterval(loadTicker, REFRESH_MS);
 setInterval(loadFantasy, REFRESH_MS);

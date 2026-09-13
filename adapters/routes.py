@@ -311,9 +311,11 @@ def api_weekday():
 
 @sports_bp.route("/api/fantasy/rail")
 def api_fantasy_rail():
-    from .fantasy import build_fantasy_rail
+    # cached: the wire is built from the same rail and the board requests both
+    # at once, so this avoids fetching every league twice per poll.
+    from .fantasy import cached_rail
     try:
-        return jsonify(build_fantasy_rail())
+        return jsonify(cached_rail())
     except requests.RequestException as exc:
         return jsonify({"error": f"Fantasy rail unavailable: {exc}",
                         "demo": True, "people": []}), 502

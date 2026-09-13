@@ -15,6 +15,8 @@ Shapes returned:
 from __future__ import annotations
 
 import os
+import threading
+import time
 from datetime import datetime
 
 import requests
@@ -79,16 +81,26 @@ def get_nfl_state() -> dict:
         return {}
 
 
-# Player metadata is a big (~5MB) map; cache it in-process for the session.
-_players_cache: dict = {"data": None}
+# Player metadata is a big (~5MB) map. It used to be cached for the life of
+# the process, which on the Pi means weeks: injury tags on the fantasy wire
+# stayed frozen at whatever they were when the service last restarted (a
+# player marked OUT at 2am was still OUT after scoring twice). Refresh every
+# few hours; it is a heavy payload that Sleeper asks clients not to poll.
+_PLAYERS_TTL = 3 * 3600
+_players_cache: dict = {"data": None, "at": 0.0}
 
 
 def get_players() -> dict:
-    if _players_cache["data"] is None:
+    now = time.monotonic()
+    if _players_cache["data"] is None or now - _players_cache["at"] > _PLAYERS_TTL:
         try:
             _players_cache["data"] = _get(f"{SLEEPER}/players/nfl") or {}
+            _players_cache["at"] = now
         except requests.RequestException:
-            _players_cache["data"] = {}
+            # keep serving the last good copy and retry in ten minutes
+            if _players_cache["data"] is None:
+                _players_cache["data"] = {}
+            _players_cache["at"] = now - _PLAYERS_TTL + 600
     return _players_cache["data"]
 
 
@@ -128,6 +140,7 @@ def _build_person_rail(username: str, season: str, week: int) -> dict | None:
         for i, pid in enumerate((my_mu or {}).get("starters", []) or []):
             meta = players.get(pid, {}) if isinstance(players, dict) else {}
             starters.append({
+                "id": pid,
                 "name": meta.get("full_name") or meta.get("last_name") or pid,
                 "pos": slots[i] if i < len(slots) else meta.get("position", ""),
                 "points": round(float(pts.get(pid, 0) or 0), 1),
@@ -387,13 +400,198 @@ def detect_touchdowns(prev_stats: dict, curr_stats: dict, rostered: set) -> list
     return events
 
 
+# ---------------- live wire ----------------
+
+_CACHE_TTL = 60          # seconds; the board polls rail and wire together
+_FRESH_SECONDS = 300     # a touchdown counts as "just scored" for five minutes
+_DOT, _DASH = chr(183), chr(8212)
+
+_rail_lock = threading.Lock()
+_rail_cache: dict = {"at": 0.0, "data": None}
+_stats_cache: dict = {"at": 0.0, "key": None, "data": {}}
+_name_index_cache: dict = {"src": None, "index": {}}
+_td_state: dict = {"primed": False, "seen": {}}
+
+_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
+_SLOT_POSITIONS = {"QB": {"QB"}, "RB": {"RB"}, "WR": {"WR"}, "TE": {"TE"}, "K": {"K"}}
+_FLEX_POSITIONS = {"RB", "WR", "TE", "QB"}
+_INJURY_LABEL = {"Out": "OUT", "IR": "IR", "Sus": "SUS", "PUP": "PUP",
+                 "Doubtful": "D", "Questionable": "Q"}
+_INJURY_RANK = {"OUT": 0, "IR": 0, "SUS": 1, "PUP": 1, "D": 1, "Q": 2}
+
+
+def cached_rail() -> dict:
+    """build_fantasy_rail with a short TTL.
+
+    The board requests /rail and /wire in parallel, and the wire is built from
+    the rail, so without this every poll paid for the Sleeper and ESPN league
+    fetches twice.
+    """
+    with _rail_lock:
+        now = time.monotonic()
+        if _rail_cache["data"] is not None and now - _rail_cache["at"] < _CACHE_TTL:
+            return _rail_cache["data"]
+        data = build_fantasy_rail()
+        _rail_cache.update(at=now, data=data)
+        return data
+
+
+def get_week_stats(season, week) -> dict:
+    """Sleeper's cumulative per-player stats for the week: player_id -> stats."""
+    key = (str(season), int(week))
+    now = time.monotonic()
+    if _stats_cache["key"] == key and now - _stats_cache["at"] < _CACHE_TTL:
+        return _stats_cache["data"]
+    try:
+        data = _get(f"{SLEEPER}/stats/nfl/regular/{key[0]}/{key[1]}") or {}
+    except requests.RequestException:
+        return _stats_cache["data"] if _stats_cache["key"] == key else {}
+    _stats_cache.update(at=now, key=key, data=data)
+    return data
+
+
+def _norm_name(name: str) -> str:
+    cleaned = "".join(ch if ch.isalnum() or ch == " " else " " for ch in (name or "").lower())
+    return " ".join(t for t in cleaned.split() if t not in _NAME_SUFFIXES)
+
+
+def _name_index(players: dict) -> dict:
+    if _name_index_cache["src"] is players:
+        return _name_index_cache["index"]
+    index: dict = {}
+    for pid, meta in (players or {}).items():
+        if isinstance(meta, dict) and meta.get("full_name"):
+            index.setdefault(_norm_name(meta["full_name"]), []).append(pid)
+    _name_index_cache.update(src=players, index=index)
+    return index
+
+
+def _match_player_id(name: str, slot: str, players: dict, index: dict) -> str | None:
+    """ESPN starters arrive by name only; resolve them to a Sleeper id for stats
+    and injury status. Duplicate names are settled by the lineup slot's
+    position, then by who is actually on an NFL roster."""
+    candidates = index.get(_norm_name(name)) or []
+    if not candidates:
+        return None
+    allowed = _SLOT_POSITIONS.get(slot, _FLEX_POSITIONS)
+
+    def rank(pid):
+        meta = players.get(pid) or {}
+        return (meta.get("position") not in allowed, not meta.get("team"), not meta.get("active"))
+
+    return min(candidates, key=rank)
+
+
+def _owners_label(owners: list) -> str:
+    by_person: dict = {}
+    for person, league in owners:
+        leagues = by_person.setdefault(person, [])
+        if league not in leagues:
+            leagues.append(league)
+    parts = []
+    for person, leagues in by_person.items():
+        where = leagues[0] if len(leagues) == 1 else f"{len(leagues)} leagues"
+        parts.append(f"{person.upper()} {_DOT} {where}")
+    return " / ".join(parts)
+
+
+def _td_freshness(ids: list, now: float) -> dict:
+    """When the server first saw each touchdown.
+
+    The first stats snapshot after a restart is backfill - scores from before we
+    were watching - so it is recorded as not fresh. Otherwise every restart or
+    deploy would replay the whole day's touchdowns on the TV.
+    """
+    seen = _td_state["seen"]
+    for i in ids:
+        seen.setdefault(i, now if _td_state["primed"] else None)
+    _td_state["primed"] = True
+    return {i: seen[i] is not None and now - seen[i] < _FRESH_SECONDS for i in ids}
+
+
 def build_fantasy_wire() -> dict:
-    """Injuries + scoring events for rostered players. Sample until leagues
-    exist; the live version diffs Sleeper stat snapshots via detect_touchdowns
-    and reads injury_status from the players map."""
-    # Live injury pass (works even without leagues once usernames are set is
-    # not meaningful, so we ship sample wire until the season is live).
-    return _sample_wire()
+    """Live wire for everyone's starters: touchdowns, injuries, top scorers.
+
+    Built from the rail the board already shows, plus Sleeper's weekly stats
+    (touchdowns) and player map (injury status). Only starters count: a benched
+    player's touchdown is not news for your matchup.
+    """
+    rail = cached_rail()
+    if rail.get("demo"):
+        return _sample_wire()
+    season, week = rail.get("season"), rail.get("week") or 1
+    players = get_players()
+    index = _name_index(players)
+    stats = get_week_stats(season, week)
+
+    roster: dict = {}
+    leaders: dict = {}
+    for person in rail.get("people", []):
+        who = person.get("person", "")
+        for lg in person.get("leagues", []):
+            league_name = lg.get("league", "")
+            for s in (lg.get("me") or {}).get("starters") or []:
+                slot = s.get("pos", "")
+                if slot in ("D/ST", "DEF"):
+                    continue
+                pid = s.get("id") or _match_player_id(s.get("name", ""), slot, players, index)
+                if not pid:
+                    continue
+                entry = roster.setdefault(pid, {"name": s.get("name", ""), "slot": slot, "owners": []})
+                entry["owners"].append((who, league_name))
+                pts = float(s.get("points") or 0)
+                best = leaders.get(who)
+                if pts > 0 and (best is None or pts > best["points"]):
+                    leaders[who] = {"name": s.get("name", ""), "points": pts, "league": league_name}
+
+    td_items = []
+    for pid, e in roster.items():
+        st = stats.get(pid) or {}
+        for stat, kind, label in (("pass_td", "passing", "pass"),
+                                  ("rush_td", "rushing", "rush"),
+                                  ("rec_td", "receiving", "rec")):
+            n = int(float(st.get(stat) or 0))
+            if n < 1:
+                continue
+            td_items.append({
+                "kind": "td", "id": f"{season}:{week}:{pid}:{stat}:{n}", "tdType": kind,
+                "player": e["name"], "count": n,
+                "text": f"TD: {e['name']} {_DASH} {n} {label} TD{'s' if n > 1 else ''} "
+                        f"({_owners_label(e['owners'])})",
+            })
+    # Only judge freshness once real stats exist; otherwise an empty pre-game
+    # snapshot becomes the baseline and the first real scores all look new at once.
+    fresh = _td_freshness([t["id"] for t in td_items], time.monotonic()) if stats else {}
+    for t in td_items:
+        t["fresh"] = bool(fresh.get(t["id"]))
+
+    inj_items = []
+    for pid, e in roster.items():
+        label = _INJURY_LABEL.get((players.get(pid) or {}).get("injury_status") or "")
+        if label:
+            inj_items.append({"kind": "inj", "player": e["name"], "rank": _INJURY_RANK[label],
+                              "text": f"{label}: {e['name']} {_DASH} {_owners_label(e['owners'])} {e['slot']}"})
+
+    score_items = [{"kind": "score", "player": v["name"],
+                    "text": f"{v['name']} leads {who.upper()} with {v['points']:.1f} pts ({v['league']})"}
+                   for who, v in leaders.items()]
+
+    td_items.sort(key=lambda t: -t["count"])
+    inj_items.sort(key=lambda i: i["rank"])
+    # The panel shows about six rows, so order by what matters for your matchup
+    # right now: just-scored touchdowns, injuries that cost you a starter, each
+    # person's top scorer, then the rest of the day's touchdowns, then
+    # questionable tags. Leaders used to sit behind every touchdown and never
+    # made the cut on a busy Sunday.
+    items = ([t for t in td_items if t["fresh"]]
+             + [i for i in inj_items if i["rank"] < 2]
+             + score_items
+             + [t for t in td_items if not t["fresh"]]
+             + [i for i in inj_items if i["rank"] >= 2])
+    for i in items:
+        i.pop("rank", None)
+    return {"source": "Sleeper+ESPN", "demo": False, "season": season, "week": week,
+            "items": items[:8]}
 
 
 # ---------------- sample data (until the season / usernames exist) ----------------
