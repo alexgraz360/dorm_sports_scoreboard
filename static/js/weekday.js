@@ -50,7 +50,7 @@ function renderWeather(w) {
   $("wx-temp").innerHTML = `${esc(w.temp)}&deg;`;
   $("wx-cond").textContent = w.condition || "";
   $("wx-hilo").innerHTML = `HI ${esc(w.hi)}&deg; · LO ${esc(w.lo)}&deg; · WIND ${esc(w.wind)} MPH · RAIN ${esc(w.precip)}%`;
-  $("wxnow").innerHTML = `${esc(w.location || "HURST 11")} · ${esc(w.temp)}&deg;F`;
+  $("wxnow").innerHTML = `${esc(w.location || "HURST 12")} · ${esc(w.temp)}&deg;F`;
   $("wxhours").innerHTML = (w.hours || []).map((h) =>
     `<div class="wx-hr"><div class="h">${esc(h.h)}</div><div class="t">${esc(h.t)}</div>`
     + `<div class="c">${esc(h.c)}</div></div>`).join("");

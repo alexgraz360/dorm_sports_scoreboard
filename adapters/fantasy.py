@@ -321,13 +321,24 @@ def _build_espn_league(lid: str, year: int, cookies: dict) -> dict | None:
             my_pts, opp_pts = away.get("totalPoints", 0), home.get("totalPoints", 0)
             opp_team = _espn_team_by_id(league, home.get("teamId"))
             break
+    my_starters = _espn_starters(me)
+    opp_starters = _espn_starters(opp_team) if opp_team else []
+
+    # ESPN's matchup totalPoints stays 0 until the week is finalised, so a live
+    # Sunday showed every starter scoring while the team total read 0. Fall back
+    # to the sum of the starters, which is what the players are actually worth
+    # right now. A real reported total still wins once ESPN fills it in.
+    def _total(reported, starters):
+        reported = float(reported or 0)
+        return reported if reported else round(sum(p.get("points", 0) or 0 for p in starters), 1)
+
     return {
         "league": (league.get("settings") or {}).get("name", "ESPN League"),
         "week": week, "platform": "espn", "season": str(year),
-        "me": {"name": _espn_team_name(me), "points": round(float(my_pts or 0), 1),
-               "starters": _espn_starters(me)},
+        "me": {"name": _espn_team_name(me), "points": round(_total(my_pts, my_starters), 1),
+               "starters": my_starters},
         "opp": {"name": _espn_team_name(opp_team) if opp_team else "Opponent",
-                "points": round(float(opp_pts or 0), 1)},
+                "points": round(_total(opp_pts, opp_starters), 1)},
     }
 
 

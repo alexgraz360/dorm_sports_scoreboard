@@ -49,7 +49,11 @@ def is_cfb_season(now: datetime) -> bool:
 
 def _in_sleep_window(now: datetime) -> bool:
     # 01:00 (inclusive) to 06:00 (exclusive).
-    return 1 <= now.hour < 6
+    # The overnight sleep window used to blank the screen 01:00-06:00, which
+    # just looked broken: the TV is powered on regardless, so a dark board is
+    # worse than a live one. Sleep is now only ever entered on purpose, from
+    # the phone remote.
+    return False
 
 
 def _in_daytime_window(now: datetime) -> bool:

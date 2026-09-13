@@ -86,7 +86,7 @@ ALL_SPORTS_LEAGUES = ("mlb", "nba", "nhl", "epl", "mls", "nfl", "cfb")
 # Location for weather (Open-Meteo, no key). Default: Madison, NJ (Drew Univ).
 WEATHER_LAT = 40.766
 WEATHER_LON = -74.425
-LOCATION_LABEL = "HURST 11"
+LOCATION_LABEL = "HURST 12"
 
 # Portfolio holdings (local config; quotes come from Finnhub). shares only.
 # Fractional shares come from dividend reinvestment — keep the decimals.

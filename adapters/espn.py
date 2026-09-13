@@ -10,7 +10,7 @@ multi-sport extensions: sport, per-team accent/fav/rank, detail, situation.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import requests
@@ -331,11 +331,29 @@ def _fetch_json(url: str, params: dict | None = None) -> dict:
     return resp.json()
 
 
+def _scoreboard_params(cfg: dict) -> dict:
+    """Scoreboard query args, pinned to today's date.
+
+    Without an explicit date ESPN returns "the current slate", which for soccer
+    is the last matchday played. EPL fixtures therefore arrived as yesterday's
+    finals and were dropped by the today-filter, so the league disappeared from
+    the board entirely.
+    """
+    params = dict(cfg.get("params") or {})
+    # Yesterday..today rather than just today: a game that started last night
+    # and is still running past midnight is carried on yesterday's date, and
+    # fetch_games keeps anything live. The ET today-filter drops the rest.
+    now = datetime.now(EASTERN)
+    start = (now - timedelta(days=1)).strftime("%Y%m%d")
+    params.setdefault("dates", f"{start}-{now.strftime('%Y%m%d')}")
+    return params
+
+
 def fetch_games(league: str) -> list[dict]:
     """Fetch and map today's games for a league. Raises requests exceptions."""
     cfg = ESPN_LEAGUES[league]
     data = _fetch_json(
-        SCOREBOARD_URL.format(path=cfg["path"]), params=cfg.get("params"),
+        SCOREBOARD_URL.format(path=cfg["path"]), params=_scoreboard_params(cfg),
     )
     family = cfg["family"]
     games = []
