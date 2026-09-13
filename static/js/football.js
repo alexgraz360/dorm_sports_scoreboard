@@ -166,6 +166,21 @@ function renderFantasyWire(wire) {
   }).join("");
   box.innerHTML = `<div class="fw-title">FANTASY WIRE${isDemo ? " · SAMPLE" : ""}</div>`
     + `<div class="fw-list">${rows || '<div class="fw-item"><span>Quiet on the wire…</span></div>'}</div>`;
+  // The panel is a fixed height and rows wrap, so on a busy Sunday the last
+  // row was being sliced in half at the bottom edge. Hide the first row that
+  // does not fully fit and everything after it, which keeps the priority
+  // order and adapts to whatever size TV this is on.
+  const list = box.querySelector(".fw-list");
+  if (list) {
+    const boxRect = box.getBoundingClientRect();
+    const limit = Math.min(list.getBoundingClientRect().bottom,
+      boxRect.bottom - parseFloat(getComputedStyle(box).paddingBottom || 0));
+    let overflow = false;
+    list.querySelectorAll(".fw-item").forEach((row) => {
+      if (!overflow && row.getBoundingClientRect().bottom > limit + 1) overflow = true;
+      if (overflow) row.style.display = "none";
+    });
+  }
   // Celebrate a touchdown only when the server says it just happened (fresh =
   // first seen within the last few minutes). Keying off freshness rather than
   // 'not yet seen by this page' means a reload, board switch or deploy never
