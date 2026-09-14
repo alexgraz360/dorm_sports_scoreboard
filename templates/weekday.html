@@ -44,7 +44,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Barlow Condensed',sans-s
 .srow:last-child{border-bottom:0;}
 .st{font-weight:700;font-size:clamp(calc(15px * var(--s)),calc(1.35vw * var(--s)),calc(26px * var(--s)));color:var(--dim);min-width:3.4em;}
 .sc{font-weight:700;font-size:clamp(calc(15px * var(--s)),calc(1.35vw * var(--s)),calc(26px * var(--s)));color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.sr{font-family:'Inter';font-weight:700;font-size:clamp(calc(9px * var(--s)),calc(.7vw * var(--s)),calc(12px * var(--s)));color:var(--dim2);}
+/* Location column capped with an ellipsis: an unbounded street address took
+   the whole row and squeezed the event title out entirely. */
+.sr{font-family:'Inter';font-weight:700;font-size:clamp(calc(9px * var(--s)),calc(.7vw * var(--s)),calc(12px * var(--s)));color:var(--dim2);max-width:14em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;}
 .srow.now{background:var(--amber);border-radius:6px;padding:.5vh .6vw;border-bottom:0;}
 .srow.now .st,.srow.now .sc{color:#1a1206;}
 .srow.now .sr{color:#4a3a10;}

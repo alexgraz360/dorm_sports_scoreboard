@@ -75,5 +75,14 @@ late = cal(["UID:late", TZ + "20260914T223000",
             "RRULE:FREQ=WEEKLY;UNTIL=20260922T035959Z;BYDAY=MO", "SUMMARY:Late"])
 check("late-evening series: last occurrence before a UTC UNTIL still shows", day(late, 2026, 9, 21), [("10:30p", "Late")])
 
+# calendar text: iCal escapes and long locations
+texty = cal(["UID:fed", TZ + "20260914T180000", "SUMMARY:Coffee\, then study",
+             "LOCATION:Lewis House\, Drew University\, Madison\, NJ 07940\, USA"])
+row = W._parse_ical_today(texty, datetime(2026, 9, 14, 6, 0, tzinfo=E))[0]
+check("unescaped title", row["title"], "Coffee, then study")
+check("location shortened to the place", row["room"], "Lewis House")
+bare = cal(["UID:bare", TZ + "20260914T180000", "SUMMARY:No room"])
+check("missing location keeps the placeholder", W._parse_ical_today(bare, datetime(2026, 9, 14, 6, 0, tzinfo=E))[0]["room"], chr(8212))
+
 print("  ALL PASS" if ok else "  SOME FAIL")
 sys.exit(0 if ok else 1)

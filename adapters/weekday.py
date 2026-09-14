@@ -262,6 +262,31 @@ def _recurs_on(start: datetime, rule: dict, exdates: set, target: date) -> bool:
 
 
 _NO_ROOM = chr(8212)
+
+
+def _ical_text(value: str) -> str:
+    # iCal escapes commas, semicolons, backslashes and newlines in text values
+    # (RFC 5545 3.3.11); left alone, a location read "Florham Park\, NJ".
+    value = value.strip()
+    out, i = [], 0
+    while i < len(value):
+        ch = value[i]
+        if ch == "\\" and i + 1 < len(value):
+            nxt = value[i + 1]
+            out.append(" " if nxt in "nN" else nxt)
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out).strip()
+
+
+def _short_place(location: str) -> str:
+    # A card row has room for a place, not a postal address: keep the part
+    # before the first comma ("Lewis House, Drew University, Madison, NJ ..."
+    # becomes "Lewis House").
+    first = (location or "").split(",")[0].strip()
+    return first or _NO_ROOM
 _PLACEHOLDER_TITLES = ("busy", "(busy)", "free", "tentative")
 
 
@@ -306,9 +331,9 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
         elif line.startswith("STATUS"):
             cur["status"] = line.split(":", 1)[-1].strip().upper()
         elif line.startswith("SUMMARY"):
-            cur["summary"] = line.split(":", 1)[-1].strip()
+            cur["summary"] = _ical_text(line.split(":", 1)[-1])
         elif line.startswith("LOCATION"):
-            cur["location"] = line.split(":", 1)[-1].strip() or _NO_ROOM
+            cur["location"] = _ical_text(line.split(":", 1)[-1]) or _NO_ROOM
 
     # Editing, moving or cancelling one occurrence of a repeating event makes
     # Google add a separate VEVENT with the same UID and a RECURRENCE-ID naming
@@ -339,7 +364,7 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
             "time": "all-day" if ev.get("allday") else f"{h12}:{start.minute:02d}{ap}",
             "sort": -1 if ev.get("allday") else start.hour * 60 + start.minute,
             "title": ev.get("summary", "(busy)"),
-            "room": ev.get("location", _NO_ROOM),
+            "room": _short_place(ev.get("location", _NO_ROOM)),
             "now": 0,
             # end-of-event, used by the Glenwild advice to work out when
             # you would actually be driving back. -1 when the feed omits DTEND.
