@@ -171,7 +171,7 @@ _WEEKDAY_CODES = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
 
 def _parse_rrule(value: str) -> dict:
     """Parse an RRULE value ('FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=...') into a dict.
-    BYDAY becomes a set of weekday ints; UNTIL a date."""
+    BYDAY becomes a set of weekday ints; UNTIL is kept raw and resolved per event (see _until_bound)."""
     rule: dict = {}
     for part in value.split(";"):
         if "=" not in part:
@@ -182,10 +182,9 @@ def _parse_rrule(value: str) -> dict:
             rule[key] = {_WEEKDAY_CODES[d[-2:]] for d in val.split(",")
                          if d[-2:] in _WEEKDAY_CODES}
         elif key == "UNTIL":
-            try:
-                rule[key] = datetime.strptime(val[:8], "%Y%m%d").date()
-            except ValueError:
-                pass
+            # Kept raw: a timed UNTIL is usually UTC and only means something
+            # once converted to the timezone of the event (see _until_bound).
+            rule[key] = val.strip()
         else:
             rule[key] = val
     return rule
@@ -219,19 +218,38 @@ def _iter_occurrences(start: date, freq: str, interval: int, byday, cap: int = 4
                 continue
 
 
+def _until_bound(raw, tz):
+    # RRULE UNTIL as a comparable bound: a date for date-only values, otherwise
+    # an aware datetime. Google ends a split series in UTC, e.g.
+    # UNTIL=20260914T035959Z is 11:59:59pm Eastern on Sep 13. Reading only the
+    # first eight characters made that Sep 14, so a series edited with "this and
+    # following" ran one week too long and doubled up with its replacement.
+    if not raw:
+        return None
+    if "T" in raw:
+        return _parse_ical_dt(raw, tz)
+    try:
+        return datetime.strptime(raw[:8], "%Y%m%d").date()
+    except ValueError:
+        return None
+
+
 def _recurs_on(start: datetime, rule: dict, exdates: set, target: date) -> bool:
     freq = rule.get("FREQ")
     if not freq or target < start.date() or target in exdates:
         return False
     interval = int(rule.get("INTERVAL") or 1) or 1
     count = int(rule["COUNT"]) if str(rule.get("COUNT", "")).isdigit() else None
-    until = rule.get("UNTIL")
+    until = _until_bound(rule.get("UNTIL"), start.tzinfo)
     d0 = start.date()
     emitted = 0
     for occ in _iter_occurrences(d0, freq, interval, rule.get("BYDAY")):
         if occ < d0:
             continue
-        if until and occ > until:
+        if isinstance(until, datetime):
+            if datetime.combine(occ, start.timetz()) > until:
+                break
+        elif until is not None and occ > until:
             break
         emitted += 1
         if count is not None and emitted > count:
@@ -243,9 +261,14 @@ def _recurs_on(start: datetime, rule: dict, exdates: set, target: date) -> bool:
     return False
 
 
+_NO_ROOM = chr(8212)
+_PLACEHOLDER_TITLES = ("busy", "(busy)", "free", "tentative")
+
+
 def _parse_ical_today(text: str, now: datetime) -> list[dict]:
     today = now.date()
-    events: list[dict] = []
+    tz = now.tzinfo
+    parsed: list[dict] = []
     cur: dict = {}
     in_event = False
     for line in _unfold_ical(text):
@@ -253,53 +276,75 @@ def _parse_ical_today(text: str, now: datetime) -> list[dict]:
             in_event, cur = True, {"exdates": set()}
         elif line.startswith("END:VEVENT"):
             in_event = False
-            start = cur.get("start")
-            if not start:
-                continue
-            occurs = start.date() == today or (
-                "rrule" in cur and _recurs_on(start, cur["rrule"], cur["exdates"], today))
-            # Skip generic free/busy placeholders. Synced calendars emit these
-            # (e.g. a recurring 00:00-07:00 "Busy" block) and they carry no
-            # information, so they only crowd out the real schedule.
-            if (cur.get("summary", "").strip().lower() in
-                    ("busy", "(busy)", "free", "tentative")):
-                continue
-            if occurs:
-                ap = "a" if start.hour < 12 else "p"
-                h12 = start.hour % 12 or 12
-                events.append({
-                    "time": "all-day" if cur.get("allday") else f"{h12}:{start.minute:02d}{ap}",
-                    "sort": -1 if cur.get("allday") else start.hour * 60 + start.minute,
-                    "title": cur.get("summary", "(busy)"),
-                    "room": cur.get("location", "—"),
-                    "now": 0,
-                    # end-of-event, used by the Glenwild advice to work out when
-                    # you'd actually be driving back. -1 when the feed omits DTEND.
-                    "endMin": (cur["end"].hour * 60 + cur["end"].minute)
-                              if cur.get("end") else -1,
-                })
-        elif in_event and line.startswith("DTSTART"):
+            if cur.get("start"):
+                parsed.append(cur)
+        elif not in_event:
+            continue
+        elif line.startswith("DTSTART"):
             value = line.split(":", 1)[-1].strip()
-            allday = "VALUE=DATE" in line and "T" not in value
-            dt = _parse_ical_dt(value, now.tzinfo)
+            dt = _parse_ical_dt(value, tz)
             if dt:
                 cur["start"] = dt
-                cur["allday"] = allday
-        elif in_event and line.startswith("DTEND"):
-            dt = _parse_ical_dt(line.split(":", 1)[-1].strip(), now.tzinfo)
+                cur["allday"] = "VALUE=DATE" in line and "T" not in value
+        elif line.startswith("DTEND"):
+            dt = _parse_ical_dt(line.split(":", 1)[-1].strip(), tz)
             if dt:
                 cur["end"] = dt
-        elif in_event and line.startswith("RRULE"):
+        elif line.startswith("RRULE"):
             cur["rrule"] = _parse_rrule(line.split(":", 1)[-1].strip())
-        elif in_event and line.startswith("EXDATE"):
+        elif line.startswith("EXDATE"):
             for v in line.split(":", 1)[-1].split(","):
-                d = _parse_ical_dt(v.strip(), now.tzinfo)
+                d = _parse_ical_dt(v.strip(), tz)
                 if d:
                     cur["exdates"].add(d.date())
-        elif in_event and line.startswith("SUMMARY"):
+        elif line.startswith("RECURRENCE-ID"):
+            d = _parse_ical_dt(line.split(":", 1)[-1].strip(), tz)
+            if d:
+                cur["recurrence_of"] = d.date()
+        elif line.startswith("UID"):
+            cur["uid"] = line.split(":", 1)[-1].strip()
+        elif line.startswith("STATUS"):
+            cur["status"] = line.split(":", 1)[-1].strip().upper()
+        elif line.startswith("SUMMARY"):
             cur["summary"] = line.split(":", 1)[-1].strip()
-        elif in_event and line.startswith("LOCATION"):
-            cur["location"] = line.split(":", 1)[-1].strip() or "—"
+        elif line.startswith("LOCATION"):
+            cur["location"] = line.split(":", 1)[-1].strip() or _NO_ROOM
+
+    # Editing, moving or cancelling one occurrence of a repeating event makes
+    # Google add a separate VEVENT with the same UID and a RECURRENCE-ID naming
+    # the original occurrence. That entry replaces the series on that date;
+    # without honouring it the board showed the original slot and the edited one.
+    replaced = {(ev["uid"], ev["recurrence_of"]) for ev in parsed
+                if ev.get("uid") and ev.get("recurrence_of")}
+
+    events: list[dict] = []
+    for ev in parsed:
+        start = ev["start"]
+        if ev.get("status") == "CANCELLED":
+            continue
+        if ev.get("recurrence_of"):
+            occurs = start.date() == today
+        else:
+            occurs = start.date() == today or (
+                "rrule" in ev and _recurs_on(start, ev["rrule"], ev["exdates"], today))
+            if occurs and "rrule" in ev and (ev.get("uid"), today) in replaced:
+                occurs = False
+        # Skip generic free/busy placeholders. Synced calendars emit these (e.g. a
+        # recurring 00:00-07:00 Busy block) and they only crowd out the schedule.
+        if not occurs or ev.get("summary", "").strip().lower() in _PLACEHOLDER_TITLES:
+            continue
+        ap = "a" if start.hour < 12 else "p"
+        h12 = start.hour % 12 or 12
+        events.append({
+            "time": "all-day" if ev.get("allday") else f"{h12}:{start.minute:02d}{ap}",
+            "sort": -1 if ev.get("allday") else start.hour * 60 + start.minute,
+            "title": ev.get("summary", "(busy)"),
+            "room": ev.get("location", _NO_ROOM),
+            "now": 0,
+            # end-of-event, used by the Glenwild advice to work out when
+            # you would actually be driving back. -1 when the feed omits DTEND.
+            "endMin": (ev["end"].hour * 60 + ev["end"].minute) if ev.get("end") else -1,
+        })
     events.sort(key=lambda e: e["sort"])
     # Mark the event happening now (started, next one not yet). All-day skipped.
     now_min = now.hour * 60 + now.minute
