@@ -64,11 +64,27 @@ h1,p{margin:0;}
 .fr-vs{font-family:var(--pixel);font-size:clamp(calc(7px * var(--s)),calc(.6vw * var(--s)),calc(10px * var(--s)));color:var(--dim);}
 .fr-win .fr-pts{color:var(--green);text-shadow:0 0 10px var(--green);}
 .fr-list{display:flex;flex-direction:column;min-height:0;overflow:hidden;}
-.fr-row{display:grid;grid-template-columns:2.4em 1fr auto;align-items:baseline;gap:.5vw;padding:.28vh 0;border-bottom:1px solid rgba(140,130,200,.13);font-size:clamp(calc(12px * var(--s)),calc(1vw * var(--s)),calc(18px * var(--s)));}
+/* Starter rows tightened from .28vh to .1vh of padding so the win-probability
+   bar fits under a full ten-starter lineup: at 1080p a ten-starter card had
+   2px to spare, and the bar needs about 28px. Text size is unchanged. */
+.fr-row{display:grid;grid-template-columns:2.4em 1fr auto;align-items:baseline;gap:.5vw;padding:.1vh 0;border-bottom:1px solid rgba(140,130,200,.13);font-size:clamp(calc(12px * var(--s)),calc(1vw * var(--s)),calc(18px * var(--s)));}
 .fr-pos{font-family:var(--pixel);font-size:clamp(calc(6px * var(--s)),calc(.55vw * var(--s)),calc(9px * var(--s)));color:var(--cyan);}
 .fr-pname{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fr-ppts{color:var(--dim);text-align:right;}
 .fr-dots{display:flex;gap:4px;justify-content:center;flex:0 0 auto;}
+/* Win-probability tug of war. Your side fills amber from the left, the
+   opponent magenta from the right, with a tick fixed at 50% so the lean reads
+   at a glance. It slides out from the middle each time a card rotates in. */
+/* One row, percentages at each end of the rope: a bar plus a label line cost
+   two starter rows at 1080p (K and D/ST were hidden) and four at 720p. */
+.fr-wp{flex:0 0 auto;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5vw;border-top:1px dashed rgba(255,210,58,.35);padding-top:.5vh;font-family:var(--pixel);font-size:clamp(calc(7px * var(--s)),calc(.62vw * var(--s)),calc(11px * var(--s)));color:var(--dim);}
+.fr-wp .lead{color:var(--ink);text-shadow:0 0 6px rgba(255,255,255,.35);}
+.fr-wp-bar{position:relative;display:flex;height:clamp(10px,1.4vh,18px);border:1px solid rgba(255,255,255,.25);background:#05030f;}
+.fr-wp-bar i{display:block;height:100%;animation:frWpSlide .9s ease-out;}
+.fr-wp-bar i.me{background:var(--amber);box-shadow:0 0 8px rgba(255,210,58,.55);}
+.fr-wp-bar i.opp{background:var(--magenta);box-shadow:0 0 8px rgba(255,47,185,.45);}
+.fr-wp-bar b{position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink);opacity:.8;}
+@keyframes frWpSlide{from{width:50%;}}
 .fr-dot{width:6px;height:6px;border:1px solid var(--amber);}
 .fr-dot.on{background:var(--amber);box-shadow:0 0 5px var(--amber);}
 

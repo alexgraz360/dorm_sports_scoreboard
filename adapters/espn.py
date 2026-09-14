@@ -331,6 +331,49 @@ def _fetch_json(url: str, params: dict | None = None) -> dict:
     return resp.json()
 
 
+_week_state_cache: dict = {"at": None, "key": None, "data": {}}
+
+
+def nfl_week_team_states(season, week) -> dict:
+    """Every NFL team's game state for a week: abbrev -> {state, remaining}.
+
+    remaining is the share of the game still to play: 1.0 before kickoff, 0.0
+    once final. Fetched by week rather than by date because a fantasy matchup
+    runs Thursday to Monday, and the today-only scoreboard misses both ends.
+    Cached for a minute.
+    """
+    key = (str(season), int(week))
+    now = datetime.now(EASTERN)
+    cache = _week_state_cache
+    if cache["key"] == key and cache["at"] and (now - cache["at"]).total_seconds() < 60:
+        return cache["data"]
+    try:
+        data = _fetch_json(SCOREBOARD_URL.format(path="football/nfl"),
+                           params={"week": key[1], "seasontype": 2, "dates": key[0]})
+    except requests.RequestException:
+        return cache["data"] if cache["key"] == key else {}
+    states: dict = {}
+    for event in _get(data, "events", default=[]) or []:
+        comp = _get(event, "competitions", 0, default={}) or {}
+        status = _get(comp, "status", default={}) or {}
+        state = _get(status, "type", "state", default="pre")
+        if state == "post":
+            remaining = 0.0
+        elif state == "in":
+            period = _to_int(_get(status, "period", default=1), 1)
+            mins, _, secs = (status.get("displayClock") or "15:00").partition(":")
+            left_in_period = (_to_int(mins, 15) + _to_int(secs, 0) / 60) / 15
+            remaining = 0.05 if period > 4 else max(0.0, (4 - period + left_in_period) / 4)
+        else:
+            remaining = 1.0
+        for comp_team in _get(comp, "competitors", default=[]) or []:
+            abbrev = (_get(comp_team, "team", "abbreviation", default="") or "").upper()
+            if abbrev:
+                states[abbrev] = {"state": state, "remaining": remaining}
+    cache.update(at=now, key=key, data=states)
+    return states
+
+
 def _scoreboard_params(cfg: dict) -> dict:
     """Scoreboard query args, pinned to today's date.
 

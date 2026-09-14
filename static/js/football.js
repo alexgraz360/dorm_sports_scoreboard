@@ -121,6 +121,27 @@ let fantasyIndex = 0;
 let fantasyTimer = null;
 let seenTds = new Set();
 
+/* Hide trailing rows that do not fully fit inside a clipped list, so a panel
+   never shows half a row. Rows go from the bottom up, which keeps priority
+   order. Layout is re-read after every removal because hiding a row changes
+   how flexbox shares space between the list and its siblings: a single
+   measure-then-hide pass left a starter row overhanging by 2px at 720p. */
+function hideOverflowRows(list, rowSelector, container) {
+  if (!list) return;
+  const limit = () => {
+    const bottom = list.getBoundingClientRect().bottom;
+    if (!container) return bottom;
+    const pad = parseFloat(getComputedStyle(container).paddingBottom || 0);
+    return Math.min(bottom, container.getBoundingClientRect().bottom - pad);
+  };
+  const visible = () => [...list.querySelectorAll(rowSelector)].filter((r) => r.style.display !== "none");
+  let rows = visible();
+  while (rows.length && rows[rows.length - 1].getBoundingClientRect().bottom > limit() + 1) {
+    rows[rows.length - 1].style.display = "none";
+    rows = visible();
+  }
+}
+
 function renderFantasyRail() {
   const box = el("#frail");
   if (!box) return;
@@ -138,6 +159,15 @@ function renderFantasyRail() {
   const starters = (g.me.starters || []).slice(0, 10).map((s) =>
     `<div class="fr-row"><span class="fr-pos">${esc(s.pos)}</span>`
     + `<span class="fr-pname">${esc(s.name)}</span><span class="fr-ppts">${esc(s.points)}</span></div>`).join("");
+  // Win-probability tug of war: your share fills from the left, the
+  // opponent from the right, with a fixed tick at 50%. ESPN supplies the
+  // number; for Sleeper it is our estimate from projections (fantasy.py).
+  const wp = typeof g.me.winProb === "number" ? Math.max(0, Math.min(100, g.me.winProb)) : null;
+  const wpBar = wp === null ? "" :
+    `<div class="fr-wp"><span class="${wp >= 50 ? "lead" : ""}">${wp}%</span>`
+    + `<div class="fr-wp-bar"><i class="me" style="width:${wp}%"></i>`
+    + `<i class="opp" style="width:${100 - wp}%"></i><b></b></div>`
+    + `<span class="${wp < 50 ? "lead" : ""}">${100 - wp}%</span></div>`;
   box.innerHTML =
     `<div class="fr-head"><span class="fr-title">${esc(c.person)} · FANTASY</span>`
     + `<span class="fr-plat ${esc(g.platform || "sleeper")}">${esc((g.platform || "sleeper").toUpperCase())}</span></div>`
@@ -148,7 +178,10 @@ function renderFantasyRail() {
     + `<div class="fr-team opp ${!meWin ? "fr-win" : ""}"><span class="fr-nm">${esc(g.opp.name)}</span><span class="fr-pts">${esc(g.opp.points)}</span></div>`
     + `</div>`
     + `<div class="fr-list">${starters}</div>`
-    + `<div class="fr-dots">${dots}</div>`;
+    + wpBar + `<div class="fr-dots">${dots}</div>`;
+  // The bar takes room from the starter list; drop starters that would be
+  // sliced at the edge rather than showing half of one.
+  hideOverflowRows(box.querySelector(".fr-list"), ".fr-row");
 }
 
 function renderFantasyWire(wire) {
@@ -167,20 +200,8 @@ function renderFantasyWire(wire) {
   box.innerHTML = `<div class="fw-title">FANTASY WIRE${isDemo ? " · SAMPLE" : ""}</div>`
     + `<div class="fw-list">${rows || '<div class="fw-item"><span>Quiet on the wire…</span></div>'}</div>`;
   // The panel is a fixed height and rows wrap, so on a busy Sunday the last
-  // row was being sliced in half at the bottom edge. Hide the first row that
-  // does not fully fit and everything after it, which keeps the priority
-  // order and adapts to whatever size TV this is on.
-  const list = box.querySelector(".fw-list");
-  if (list) {
-    const boxRect = box.getBoundingClientRect();
-    const limit = Math.min(list.getBoundingClientRect().bottom,
-      boxRect.bottom - parseFloat(getComputedStyle(box).paddingBottom || 0));
-    let overflow = false;
-    list.querySelectorAll(".fw-item").forEach((row) => {
-      if (!overflow && row.getBoundingClientRect().bottom > limit + 1) overflow = true;
-      if (overflow) row.style.display = "none";
-    });
-  }
+  // row was being sliced in half at the bottom edge.
+  hideOverflowRows(box.querySelector(".fw-list"), ".fw-item", box);
   // Celebrate a touchdown only when the server says it just happened (fresh =
   // first seen within the last few minutes). Keying off freshness rather than
   // 'not yet seen by this page' means a reload, board switch or deploy never
