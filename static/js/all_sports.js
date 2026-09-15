@@ -107,6 +107,30 @@ function buildPool() {
     .slice(0, 5);
   if (!focusPool.length && games.length) focusPool = [{ g: games[0], s: 0 }];
 }
+/* Keep a tile's footer (period/inning and status flag) on screen. Every part
+   of a tile is sized as a share of the tile's own height, so a featured game
+   carrying status tags, a bases or field graphic, a win-probability bar and a
+   leaders line can need more than 100% of it; the footer was then pushed past
+   the bottom edge and cut off. Hide the least important extras one at a time,
+   re-measuring after each, until the footer fits: status tags first (they
+   repeat the footer), then leaders, then win probability, then the graphic.
+   Scores and the footer itself are never hidden. */
+function fitTile(tile) {
+  const foot = tile.querySelector(".tile-foot");
+  if (!foot) return;
+  const fits = () => {
+    const cs = getComputedStyle(tile);
+    const clipEdge = tile.getBoundingClientRect().bottom // overflow:hidden clips at the padding box
+      - parseFloat(cs.borderBottomWidth);
+    return foot.getBoundingClientRect().bottom <= clipEdge + 1;
+  };
+  for (const selector of [".focus-reasons", ".leaders", ".wp", ".viz"]) {
+    if (fits()) return;
+    const part = tile.querySelector(selector);
+    if (part) part.style.display = "none";
+  }
+}
+
 function renderGrid() {
   if (!games.length) {
     el("#games-grid").innerHTML = `<article class="tile"><span>NO GAMES RIGHT NOW</span></article>`;
@@ -117,6 +141,7 @@ function renderGrid() {
   const focus = pinned || focusPool[focusIndex % Math.max(focusPool.length, 1)].g;
   const rest = games.filter((g) => g.id !== focus.id).slice(0, 8);
   el("#games-grid").innerHTML = [tile(focus, true), ...rest.map((g) => tile(g, false))].join("");
+  document.querySelectorAll("#games-grid .tile").forEach(fitTile);
 }
 
 /* ---------------- sidebar: "ALSO ON" ---------------- */
