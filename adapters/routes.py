@@ -55,9 +55,19 @@ def _asset_version() -> str:
     return str(int(latest))
 
 
+# Computed once, when this server process starts, not per request.
+# update_app.sh runs git pull and only then restarts the service. With a
+# per-request version, the old process saw the new file timestamps during that
+# gap, told the kiosk to reload, and served it the old cached template together
+# with the new scripts: the TV ran new JavaScript against old CSS, and compact
+# tiles lost their bases graphic. A startup version only changes once the
+# restarted server is the one answering.
+_BUILD_VERSION = _asset_version()
+
+
 @sports_bp.app_context_processor
 def _inject_asset_version():
-    return {"asset_v": _asset_version()}
+    return {"asset_v": _BUILD_VERSION}
 
 
 # Where each board id currently lives. Boards not yet built (a dedicated NFL/CFB
@@ -272,7 +282,7 @@ def api_board():
         "scale": _state["scale"],
         "safe": _state["safe"],
         "rev": _state["rev"],
-        "version": _asset_version(),
+        "version": _BUILD_VERSION,
     })
 
 
