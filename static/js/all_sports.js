@@ -133,7 +133,9 @@ function fitTile(tile) {
 
 function renderGrid() {
   if (!games.length) {
-    el("#games-grid").innerHTML = `<article class="tile"><span>NO GAMES RIGHT NOW</span></article>`;
+    // Say so when the feed itself is down, rather than implying a quiet night.
+    const msg = payload.error ? "SCORES FEED OFFLINE, RETRYING" : "NO GAMES RIGHT NOW";
+    el("#games-grid").innerHTML = `<article class="tile"><span>${msg}</span></article>`;
     return;
   }
   // A game pinned from the phone remote overrides the rotation entirely.

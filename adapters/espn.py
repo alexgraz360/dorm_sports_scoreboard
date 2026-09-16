@@ -374,33 +374,60 @@ def nfl_week_team_states(season, week) -> dict:
     return states
 
 
-def _scoreboard_params(cfg: dict) -> dict:
-    """Scoreboard query args, pinned to today's date.
+def _scoreboard_params(cfg: dict, day) -> dict:
+    """Scoreboard query args for one Eastern calendar day.
 
     Without an explicit date ESPN returns "the current slate", which for soccer
-    is the last matchday played. EPL fixtures therefore arrived as yesterday's
-    finals and were dropped by the today-filter, so the league disappeared from
-    the board entirely.
+    is the last matchday played: EPL fixtures arrived as yesterday's finals and
+    the today-filter dropped every one. ESPN takes a single date only. A
+    yesterday-today range (dates=20260915-20260916) started returning HTTP 400
+    for every league on 2026-09-16, which blanked the whole board.
     """
     params = dict(cfg.get("params") or {})
-    # Yesterday..today rather than just today: a game that started last night
-    # and is still running past midnight is carried on yesterday's date, and
-    # fetch_games keeps anything live. The ET today-filter drops the rest.
-    now = datetime.now(EASTERN)
-    start = (now - timedelta(days=1)).strftime("%Y%m%d")
-    params.setdefault("dates", f"{start}-{now.strftime('%Y%m%d')}")
+    params["dates"] = day.strftime("%Y%m%d")
     return params
+
+
+def _scoreboard_events(cfg: dict) -> list:
+    """Scoreboard events for today, plus yesterday during the small hours.
+
+    A game that started last night and is still running past midnight is filed
+    under yesterday, so before 5am Eastern yesterday is fetched as well;
+    fetch_games keeps anything still live. If ESPN rejects a dated request (a
+    4xx), fall back to the undated current slate rather than failing the
+    league: the today-filter still trims it, so a change in how ESPN handles
+    dates degrades the board instead of blanking it. Server errors still raise.
+    """
+    url = SCOREBOARD_URL.format(path=cfg["path"])
+    now = datetime.now(EASTERN)
+    days = [now.date()]
+    if now.hour < 5:
+        days.insert(0, (now - timedelta(days=1)).date())
+    events, seen = [], set()
+    for day in days:
+        try:
+            data = _fetch_json(url, params=_scoreboard_params(cfg, day))
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status is None or not 400 <= status < 500:
+                raise
+            print(f"[dorm-wire] ESPN rejected dated scoreboard request ({status}); "
+                  f"using the undated slate for {cfg['path']}", file=sys.stderr, flush=True)
+            data = _fetch_json(url, params=dict(cfg.get("params") or {}))
+        for event in _get(data, "events", default=[]) or []:
+            key = event.get("id") or id(event)
+            if key not in seen:
+                seen.add(key)
+                events.append(event)
+    return events
 
 
 def fetch_games(league: str) -> list[dict]:
     """Fetch and map today's games for a league. Raises requests exceptions."""
     cfg = ESPN_LEAGUES[league]
-    data = _fetch_json(
-        SCOREBOARD_URL.format(path=cfg["path"]), params=_scoreboard_params(cfg),
-    )
     family = cfg["family"]
     games = []
-    for event in _get(data, "events", default=[]) or []:
+    for event in _scoreboard_events(cfg):
         mapped = _map_event(league, family, event)
         if mapped:
             games.append(mapped)
@@ -514,10 +541,12 @@ def build_all_today(leagues=None) -> dict:
     leagues = leagues or ALL_SPORTS_LEAGUES
     now = datetime.now(EASTERN)
     all_games: list[dict] = []
+    attempted = failed = 0
     sports_with_games: list[str] = []
     for league in leagues:
         if league not in ESPN_LEAGUES:
             continue
+        attempted += 1
         try:
             games = fetch_games(league)
         except requests.RequestException as exc:
@@ -525,6 +554,7 @@ def build_all_today(leagues=None) -> dict:
             # is logged (not silent) so an upstream block shows up in the
             # service journal instead of looking like "no games today".
             print(f"[dorm-wire] ESPN fetch failed for {league}: {exc}", file=sys.stderr, flush=True)
+            failed += 1
             continue
         if games:
             sports_with_games.append(league)
@@ -543,6 +573,10 @@ def build_all_today(leagues=None) -> dict:
         "featured": featured,
         "sportCount": len(sports_with_games),
         "liveCount": len(live),
+        # Set when every league failed, so the board can say the feed is down
+        # instead of implying a quiet night.
+        "error": ("ESPN scoreboard unreachable for every league"
+                  if attempted and failed == attempted else None),
         "games": all_games,
     }
 
