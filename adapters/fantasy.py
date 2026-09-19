@@ -293,7 +293,54 @@ ESPN_POS_ORDER = {"QB": 0, "RB": 1, "WR": 2, "TE": 3,
                   "D/ST": 6, "K": 7}
 
 
-def _espn_starters(team: dict) -> list[dict]:
+def _espn_scoring_period(league: dict) -> int:
+    """The week ESPN is currently scoring, which is what roster points describe.
+
+    Distinct from the matchup period only in leagues whose playoffs span two
+    weeks; everywhere else they track each other.
+    """
+    status = league.get("status") or {}
+    return int(league.get("scoringPeriodId")
+               or status.get("latestScoringPeriod")
+               or status.get("currentMatchupPeriod") or 1) or 1
+
+
+def _espn_week_points(player: dict, period: int) -> float:
+    """One player's actual points for a single scoring period.
+
+    The obvious field, playerPoolEntry.appliedStatTotal, is the season-to-date
+    actual rather than this week's: on the Saturday of week 2 every starter on
+    the board still showed their week 1 line, so the matchups had rolled over
+    and the scores had not. The per-week number lives in the player's stats
+    splits, where statSourceId 0 means actual (1 is projected) and
+    statSplitTypeId 1 means one scoring period. A player who has not kicked off
+    yet has no such record, and that is a real 0, not missing data.
+    """
+    for stat in player.get("stats") or []:
+        if (stat.get("scoringPeriodId") == period
+                and stat.get("statSourceId") == 0
+                and stat.get("statSplitTypeId") == 1):
+            return round(float(stat.get("appliedTotal") or 0), 1)
+    return 0.0
+
+
+def _espn_side_total(side: dict, starters: list[dict]) -> float:
+    """A matchup side's score for its week.
+
+    totalPoints stays 0 until the week is finalised, so the running score comes
+    from totalPointsLive - including a genuine 0.0 before the first kickoff.
+    Treating that 0.0 as missing used to fall through to the starter sum, which
+    was carrying last week's points. Only a side with neither field falls back.
+    """
+    live = side.get("totalPointsLive")
+    if isinstance(live, (int, float)):
+        return float(live)
+    if side.get("totalPoints"):
+        return float(side["totalPoints"])
+    return round(sum(p.get("points", 0) or 0 for p in starters), 1)
+
+
+def _espn_starters(team: dict, period: int) -> list[dict]:
     entries = ((team.get("roster") or {}).get("entries")) or []
     out = []
     for e in entries:
@@ -304,7 +351,7 @@ def _espn_starters(team: dict) -> list[dict]:
         out.append({
             "name": player.get("fullName", "—"),
             "pos": ESPN_SLOTS.get(slot, ""),
-            "points": round(float(e.get("playerPoolEntry", {}).get("appliedStatTotal", 0) or 0), 1),
+            "points": _espn_week_points(player, period),
         })
     # Stable sort, so multiple RBs/WRs keep ESPN's own ordering within a slot.
     # Anything unrecognised sorts between FLEX and D/ST rather than vanishing.
@@ -339,17 +386,9 @@ def _build_espn_league(lid: str, year: int, cookies: dict) -> dict | None:
             continue
         opp_team = _espn_team_by_id(league, theirs.get("teamId"))
         break
-    my_starters = _espn_starters(me)
-    opp_starters = _espn_starters(opp_team) if opp_team else []
-
-    # The ESPN totalPoints field stays 0 until the week is finalised, which is why
-    # a live Sunday read 0 for the whole team. totalPointsLive is the running
-    # score; the starter sum is only a last resort if neither is populated.
-    def _total(side, starters):
-        for field in ("totalPointsLive", "totalPoints"):
-            if side.get(field):
-                return float(side[field])
-        return round(sum(p.get("points", 0) or 0 for p in starters), 1)
+    period = _espn_scoring_period(league)
+    my_starters = _espn_starters(me, period)
+    opp_starters = _espn_starters(opp_team, period) if opp_team else []
 
     def _pct(side):
         wp = side.get("winProbability")
@@ -358,10 +397,12 @@ def _build_espn_league(lid: str, year: int, cookies: dict) -> dict | None:
     return {
         "league": (league.get("settings") or {}).get("name", "ESPN League"),
         "week": week, "platform": "espn", "season": str(year),
-        "me": {"name": _espn_team_name(me), "points": round(_total(mine, my_starters), 1),
+        "me": {"name": _espn_team_name(me),
+               "points": round(_espn_side_total(mine, my_starters), 1),
                "starters": my_starters, "winProb": _pct(mine)},
         "opp": {"name": _espn_team_name(opp_team) if opp_team else "Opponent",
-                "points": round(_total(theirs, opp_starters), 1), "winProb": _pct(theirs)},
+                "points": round(_espn_side_total(theirs, opp_starters), 1),
+                "winProb": _pct(theirs)},
     }
 
 
