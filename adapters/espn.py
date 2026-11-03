@@ -9,6 +9,7 @@ multi-sport extensions: sport, per-team accent/fav/rank, detail, situation.
 
 from __future__ import annotations
 
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -28,6 +29,8 @@ REQUEST_TIMEOUT = 8
 USER_AGENT = None
 
 _ORDINAL = {1: "1ST", 2: "2ND", 3: "3RD", 4: "4TH"}
+# Event headlines that mean a bracket, not a showcase or a holiday exhibition.
+_BRACKET = re.compile(r"tournament|championship|playoff", re.IGNORECASE)
 
 
 def _get(d, *path, default=None):
@@ -268,6 +271,13 @@ def _focus(game: dict, family: str) -> dict:
     if "OT" in (game.get("detail") or ""):
         score += 40
         reasons.append("OT")
+    # March: without this every unranked bracket game sits at the same score as
+    # a random live one and sorts purely by tip-off time, so a conference final
+    # loses its tile to whatever started first. The headline itself is too long
+    # for a tag ("T. Rowe Price ACC Tournament - 1st Round").
+    if _BRACKET.search(game.get("event") or ""):
+        score += 12
+        reasons.append("TOURNAMENT")
     if game.get("hot") and game.get("flag") and game["flag"] not in reasons:
         score += 18
         reasons.append(game["flag"])
@@ -316,6 +326,7 @@ def _map_event(league: str, family: str, event: dict) -> dict | None:
     flag, hot = _flag(family, game)
     game["flag"] = flag
     game["hot"] = hot
+    game["event"] = _event_headline(event, comp)
     focus = _focus(game, family)
     game["focusScore"] = focus["score"]
     game["focusReasons"] = focus["reasons"]
@@ -422,6 +433,39 @@ def _scoreboard_events(cfg: dict) -> list:
     return events
 
 
+# Leagues too big to show whole. Division I basketball plays ~180 games a night
+# and the board has nine tiles for every sport put together; worse, 40 of those
+# games are live at once and a live game outranks everything that is not, so
+# unranked mid-majors would push the NBA off the board on tip-off time alone.
+NOTABLE_ONLY = {"cbb"}
+
+
+def _event_headline(event: dict, comp: dict) -> str:
+    """The tournament or event a game belongs to, if any ("ACC Tournament -
+    Final", "Maui Invitational"). ESPN hangs it off the competition as a note."""
+    notes = comp.get("notes") or event.get("notes") or []
+    if not isinstance(notes, list) or not notes:
+        return ""
+    first = notes[0] if isinstance(notes[0], dict) else {}
+    return (first.get("headline") or "").strip()
+
+
+def _is_notable(game: dict, headline: str) -> bool:
+    """Worth one of the board's tiles: a ranked team, someone's team, or a game
+    inside a bracket - a conference tournament, the NCAA tournament.
+
+    Not merely a game with a name on it. ESPN hangs a headline off most
+    early-season games ("Field of 68 Opening Day Marathon", "MAC-SBC
+    Challenge"), and on opening night that let 38 games through, several of
+    which would have outranked the NBA on a close scoreline alone.
+    """
+    if game["away"].get("rank") or game["home"].get("rank"):
+        return True
+    if game["away"]["fav"] or game["home"]["fav"]:
+        return True
+    return bool(_BRACKET.search(headline))
+
+
 def fetch_games(league: str) -> list[dict]:
     """Fetch and map today's games for a league. Raises requests exceptions."""
     cfg = ESPN_LEAGUES[league]
@@ -429,8 +473,11 @@ def fetch_games(league: str) -> list[dict]:
     games = []
     for event in _scoreboard_events(cfg):
         mapped = _map_event(league, family, event)
-        if mapped:
-            games.append(mapped)
+        if not mapped:
+            continue
+        if league in NOTABLE_ONLY and not _is_notable(mapped, mapped.get("event") or ""):
+            continue
+        games.append(mapped)
     # Keep today's games (Eastern) plus anything still in progress, so a game
     # that runs past midnight does not vanish mid-inning.
     today_only = [g for g in games if g["isLive"] or _is_today_et(g.get("gameDate"))]

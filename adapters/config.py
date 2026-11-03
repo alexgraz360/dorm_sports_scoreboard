@@ -66,6 +66,13 @@ ESPN_LEAGUES: dict[str, dict] = {
         "path": "basketball/mens-college-basketball",
         "label": "CBB",
         "family": "basketball",
+        # groups=50 is all of Division I. ESPN's default slate for this league
+        # is exactly "games with a top 25 team", which reads fine in January and
+        # badly everywhere else: 1 game out of 24 on conference tournament
+        # Tuesday, and nothing at all on a day the ranked teams are idle. The
+        # full slate is ~180 games a night, so espn.fetch_games filters it down
+        # (see NOTABLE_ONLY there) rather than letting ESPN choose.
+        "params": {"groups": "50"},
     },
     "nhl": {"path": "hockey/nhl", "label": "NHL", "family": "hockey"},
     "epl": {"path": "soccer/eng.1", "label": "EPL", "family": "soccer"},
@@ -80,7 +87,7 @@ ENABLED_LEAGUES = ("nfl", "cfb", "nba", "cbb", "nhl", "epl")
 
 # Leagues the all-sports board aggregates, in display priority order. The
 # aggregator pulls whichever of these have games today and skips the rest.
-ALL_SPORTS_LEAGUES = ("mlb", "nba", "nhl", "epl", "mls", "nfl", "cfb")
+ALL_SPORTS_LEAGUES = ("mlb", "nba", "nhl", "epl", "mls", "nfl", "cfb", "cbb")
 
 # ---- Weekday dashboard config (not secret) ----
 # Location for weather (Open-Meteo, no key). Default: Madison, NJ (Drew Univ).
